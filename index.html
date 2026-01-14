@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teploměr Lorda Vojtěcha</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 300px;
+        }
+        h1 { margin-top: 0; color: #333; font-size: 1.5rem; }
+        .data-row {
+            margin: 20px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .unit { font-size: 1rem; color: #7f8c8d; }
+        .label { display: block; color: #95a5a6; font-size: 0.9rem; margin-bottom: 5px; }
+        .status {
+            font-size: 0.8rem;
+            margin-top: 15px;
+            color: #e74c3c; /* Červená defaultně */
+        }
+        .status.connected { color: #27ae60; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Sídlo Lorda Vojtěcha</h1>
+        
+        <div class="data-row">
+            <span class="label">TEPLOTA</span>
+            <span id="temp" class="value">--</span> <span class="unit">°C</span>
+        </div>
+
+        <div class="data-row">
+            <span class="label">VLHKOST</span>
+            <span id="hum" class="value">--</span> <span class="unit">%</span>
+        </div>
+
+        <div id="status" class="status">Odpojeno</div>
+    </div>
+
+    <script>
+        // --- KONFIGURACE (Upravte dle EMQX) ---
+        const options = {
+            // POZOR: Prohlížeč musí použít protokol 'wss' (Secure WebSocket)
+            protocol: 'wss', 
+            hostname: 'ode2c9e6.ala.eu-central-1.emqxsl.com',
+            port: 8084, // Port pro WSS z vašeho zadání
+            path: '/mqtt', // Standardní cesta pro EMQX WebSockets
+            
+            // Zde dejte přihlašovací údaje (viz varování níže)
+            username: 'web', 
+            password: 'webpassword',
+            
+            clientId: 'WebClient_' + Math.random().toString(16).substr(2, 8)
+        };
+
+        const topicTeplota = 'doma/teplota';
+        const topicVlhkost = 'doma/vlhkost';
+        // --- KONEC KONFIGURACE ---
+
+        const statusEl = document.getElementById('status');
+        const tempEl = document.getElementById('temp');
+        const humEl = document.getElementById('hum');
+
+        console.log('Připojuji se k MQTT...');
+        const client = mqtt.connect(options);
+
+        client.on('connect', () => {
+            console.log('Připojeno k EMQX!');
+            statusEl.textContent = '● Online';
+            statusEl.classList.add('connected');
+            
+            // Odběr témat
+            client.subscribe([topicTeplota, topicVlhkost], (err) => {
+                if (!err) {
+                    console.log('Odebírám témata');
+                }
+            });
+        });
+
+        client.on('message', (topic, message) => {
+            const msg = message.toString();
+            console.log(`Přišlo ${topic}: ${msg}`);
+
+            if (topic === topicTeplota) {
+                tempEl.innerText = parseFloat(msg).toFixed(1);
+            } else if (topic === topicVlhkost) {
+                humEl.innerText = parseFloat(msg).toFixed(0);
+            }
+        });
+
+        client.on('error', (err) => {
+            console.error('Chyba spojení:', err);
+            statusEl.textContent = 'Chyba spojení';
+            statusEl.classList.remove('connected');
+        });
+        
+        client.on('offline', () => {
+             statusEl.textContent = 'Odpojeno';
+             statusEl.classList.remove('connected');
+        });
+    </script>
+</body>
+</html>
