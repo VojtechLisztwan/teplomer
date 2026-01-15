@@ -51,7 +51,7 @@
 
     <!-- NAVIGACE -->
     <nav class="navbar">
-        <a href="index.html" class="navbar-brand">Panel Lorda Vojtěcha</a>
+        <a href="index.html" class="navbar-brand">Monitorovací Systém</a>
         <div class="nav-links">
             <a href="teplomer.html" class="nav-btn">Místnosti</a>
             <a href="kotelna.html" class="nav-btn active">Kotelna</a>
@@ -263,7 +263,7 @@
             hostname: 'broker.emqx.io', 
             port: 8084,
             path: '/mqtt',
-            clientId: 'LordHeat_' + Math.random().toString(16).substr(2, 8)
+            clientId: 'WebMonitor_Heat_' + Math.random().toString(16).substr(2, 8)
         };
 
         const client = mqtt.connect(mqttOptions);

@@ -16,7 +16,7 @@
 
     <!-- NAVIGACE -->
     <nav class="navbar">
-        <a href="index.html" class="navbar-brand">Panel Lorda Vojtěcha</a>
+        <a href="index.html" class="navbar-brand">Monitorovací Systém</a>
         <div class="nav-links">
             <a href="teplomer.html" class="nav-btn active">Místnosti</a>
             <a href="kotelna.html" class="nav-btn">Kotelna</a>
@@ -47,18 +47,15 @@
                 topicTemp: 'doma/obyvak/teplota', 
                 topicHum: 'doma/obyvak/vlhkost',
                 color: '#3498db',
-                // ThingSpeak Field: Do kterého pole (Field 1-8) posíláte teplotu z tohoto senzoru?
                 thingSpeakField: 'field1' 
             }
-            // Pokud přidáte další senzor, přiřaďte mu 'field2', 'field3' atd.
         ];
 
         // --- 2. KONFIGURACE THINGSPEAK (PRO HISTORII) ---
-        // Zde musíte vyplnit údaje z vašeho účtu na thingspeak.com
         const tsConfig = {
-            enabled: true, // Změňte na true, až budete mít ThingSpeak nastavený
-            channelID: '3011617', // Např. 123456
-            readKey: 'BMX38S8R8XSRK5YR'  // Např. ABCDEF123456
+            enabled: true, 
+            channelID: 'VLOZTE_CHANNEL_ID', 
+            readKey: 'VLOZTE_READ_API_KEY'  
         };
 
         // --- 3. MQTT KONFIGURACE (PŮVODNÍ SERVER) ---
@@ -69,7 +66,7 @@
             path: '/mqtt',
             username: 'web', 
             password: 'webpassword', 
-            clientId: 'LordRooms_' + Math.random().toString(16).substr(2, 8)
+            clientId: 'WebMonitor_Rooms_' + Math.random().toString(16).substr(2, 8)
         };
 
         // --- 4. GENERUJ HTML KARTY ---
@@ -101,10 +98,10 @@
                     label: s.nazev,
                     borderColor: s.color,
                     backgroundColor: s.color,
-                    data: [], // Zde se načte historie + nová data
+                    data: [], 
                     tension: 0.4,
                     borderWidth: 2,
-                    pointRadius: 0, // Body nebudou vidět, jen čára (přehlednější)
+                    pointRadius: 0, 
                     pointHitRadius: 10
                 }))
             },
@@ -133,8 +130,6 @@
                 return;
             }
 
-            const statusEl = document.getElementById('status');
-            // Stáhneme 1440 záznamů (pokud posíláte 1x za minutu = 24 hodin)
             const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=1000`;
 
             try {
@@ -144,10 +139,8 @@
                 if (data.feeds) {
                     data.feeds.forEach(feed => {
                         const time = new Date(feed.created_at);
-                        
-                        // Projdeme naše senzory a spárujeme je s Fieldy
                         senzorKonfig.forEach((senzor, index) => {
-                            const fieldName = senzor.thingSpeakField; // např 'field1'
+                            const fieldName = senzor.thingSpeakField; 
                             const val = parseFloat(feed[fieldName]);
                             
                             if (!isNaN(val)) {
@@ -156,16 +149,13 @@
                         });
                     });
                     myChart.update();
-                    console.log(`Načteno ${data.feeds.length} záznamů historie.`);
                 }
             } catch (error) {
                 console.error("Chyba při načítání historie:", error);
             }
         }
 
-        // Spustit načítání historie po startu
         loadHistory();
-
 
         // --- 7. MQTT LOGIKA (ŽIVÁ DATA) ---
         const client = mqtt.connect(mqttOptions);
@@ -188,10 +178,7 @@
                     const el = document.getElementById(`val-temp-${s.id}`);
                     if(el) el.innerText = msgVal.toFixed(1);
                     
-                    // Přidání do grafu (navazujeme na historii)
                     myChart.data.datasets[index].data.push({x: now, y: msgVal});
-                    
-                    // Aby graf nebyl nekonečný, mažeme velmi stará data (držíme cca 24h při minutovém intervalu)
                     if (myChart.data.datasets[index].data.length > 2000) {
                         myChart.data.datasets[index].data.shift();
                     }
