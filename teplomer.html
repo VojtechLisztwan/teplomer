@@ -16,7 +16,7 @@
 
     <!-- NAVIGACE -->
     <nav class="navbar">
-        <a href="teplomer.html" class="navbar-brand">teploty</a>
+        <a href="index.html" class="navbar-brand">Panel Lorda Vojtěcha</a>
         <div class="nav-links">
             <a href="teplomer.html" class="nav-btn active">Místnosti</a>
             <a href="kotelna.html" class="nav-btn">Kotelna</a>
@@ -51,12 +51,14 @@
             // Zde lze přidat další místnost (např. {id: 'loznice', ...})
         ];
 
-        // --- 2. MQTT KONFIGURACE ---
+        // --- 2. MQTT KONFIGURACE (PŮVODNÍ SERVER) ---
         const mqttOptions = {
             protocol: 'wss',
-            hostname: 'broker.emqx.io', 
+            hostname: 'ode2c9e6.ala.eu-central-1.emqxsl.com', // Původní server
             port: 8084,
             path: '/mqtt',
+            username: 'web', // Původní login
+            password: 'webpassword', // Původní heslo
             clientId: 'LordRooms_' + Math.random().toString(16).substr(2, 8)
         };
 
@@ -110,7 +112,7 @@
         const statusEl = document.getElementById('status');
 
         client.on('connect', () => {
-            statusEl.innerHTML = '<span class="online">● Online - Místnosti</span>';
+            statusEl.innerHTML = '<span class="online">● Online - Místnosti (Privátní Server)</span>';
             senzorKonfig.forEach(s => {
                 client.subscribe(s.topicTemp);
                 client.subscribe(s.topicHum);
@@ -138,6 +140,12 @@
                     if(el) el.innerText = msgVal.toFixed(0);
                 }
             });
+        });
+        
+        client.on('error', (err) => { 
+            console.error(err); 
+            statusEl.innerText = 'Chyba spojení s MQTT'; 
+            statusEl.style.color = 'red';
         });
     </script>
 </body>
