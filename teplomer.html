@@ -46,23 +46,33 @@
                 nazev: 'Obývák', 
                 topicTemp: 'doma/obyvak/teplota', 
                 topicHum: 'doma/obyvak/vlhkost',
-                color: '#3498db' 
+                color: '#3498db',
+                // ThingSpeak Field: Do kterého pole (Field 1-8) posíláte teplotu z tohoto senzoru?
+                thingSpeakField: 'field1' 
             }
-            // Zde lze přidat další místnost (např. {id: 'loznice', ...})
+            // Pokud přidáte další senzor, přiřaďte mu 'field2', 'field3' atd.
         ];
 
-        // --- 2. MQTT KONFIGURACE (PŮVODNÍ SERVER) ---
+        // --- 2. KONFIGURACE THINGSPEAK (PRO HISTORII) ---
+        // Zde musíte vyplnit údaje z vašeho účtu na thingspeak.com
+        const tsConfig = {
+            enabled: true, // Změňte na true, až budete mít ThingSpeak nastavený
+            channelID: '3011617', // Např. 123456
+            readKey: 'BMX38S8R8XSRK5YR'  // Např. ABCDEF123456
+        };
+
+        // --- 3. MQTT KONFIGURACE (PŮVODNÍ SERVER) ---
         const mqttOptions = {
             protocol: 'wss',
-            hostname: 'ode2c9e6.ala.eu-central-1.emqxsl.com', // Původní server
+            hostname: 'ode2c9e6.ala.eu-central-1.emqxsl.com', 
             port: 8084,
             path: '/mqtt',
-            username: 'web', // Původní login
-            password: 'webpassword', // Původní heslo
+            username: 'web', 
+            password: 'webpassword', 
             clientId: 'LordRooms_' + Math.random().toString(16).substr(2, 8)
         };
 
-        // --- 3. GENERUJ HTML KARTY ---
+        // --- 4. GENERUJ HTML KARTY ---
         const dashboardRooms = document.getElementById('dashboard-rooms');
         senzorKonfig.forEach(senzor => {
             const html = `
@@ -82,7 +92,7 @@
             dashboardRooms.innerHTML += html;
         });
 
-        // --- 4. INICIALIZACE GRAFU ---
+        // --- 5. INICIALIZACE GRAFU ---
         const ctx = document.getElementById('tempChart').getContext('2d');
         const myChart = new Chart(ctx, {
             type: 'line',
@@ -91,23 +101,73 @@
                     label: s.nazev,
                     borderColor: s.color,
                     backgroundColor: s.color,
-                    data: [],
+                    data: [], // Zde se načte historie + nová data
                     tension: 0.4,
-                    borderWidth: 2
+                    borderWidth: 2,
+                    pointRadius: 0, // Body nebudou vidět, jen čára (přehlednější)
+                    pointHitRadius: 10
                 }))
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { type: 'time', time: { unit: 'second', tooltipFormat: 'HH:mm:ss' } },
+                    x: { 
+                        type: 'time', 
+                        time: { unit: 'hour', tooltipFormat: 'HH:mm' },
+                        title: { display: true, text: 'Čas (posledních 24h)' }
+                    },
                     y: { suggestedMin: 18, suggestedMax: 28 }
                 },
-                plugins: { title: { display: true, text: 'Vývoj teplot v čase' } }
+                plugins: { 
+                    title: { display: true, text: 'Vývoj teplot v čase' },
+                    tooltip: { mode: 'index', intersect: false }
+                }
             }
         });
 
-        // --- 5. LOGIKA PŘIPOJENÍ ---
+        // --- 6. NAČTENÍ HISTORIE Z THINGSPEAK ---
+        async function loadHistory() {
+            if (!tsConfig.enabled || tsConfig.channelID === 'VLOZTE_CHANNEL_ID') {
+                console.log("ThingSpeak není nastaven.");
+                return;
+            }
+
+            const statusEl = document.getElementById('status');
+            // Stáhneme 1440 záznamů (pokud posíláte 1x za minutu = 24 hodin)
+            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=1000`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.feeds) {
+                    data.feeds.forEach(feed => {
+                        const time = new Date(feed.created_at);
+                        
+                        // Projdeme naše senzory a spárujeme je s Fieldy
+                        senzorKonfig.forEach((senzor, index) => {
+                            const fieldName = senzor.thingSpeakField; // např 'field1'
+                            const val = parseFloat(feed[fieldName]);
+                            
+                            if (!isNaN(val)) {
+                                myChart.data.datasets[index].data.push({x: time, y: val});
+                            }
+                        });
+                    });
+                    myChart.update();
+                    console.log(`Načteno ${data.feeds.length} záznamů historie.`);
+                }
+            } catch (error) {
+                console.error("Chyba při načítání historie:", error);
+            }
+        }
+
+        // Spustit načítání historie po startu
+        loadHistory();
+
+
+        // --- 7. MQTT LOGIKA (ŽIVÁ DATA) ---
         const client = mqtt.connect(mqttOptions);
         const statusEl = document.getElementById('status');
 
@@ -128,9 +188,11 @@
                     const el = document.getElementById(`val-temp-${s.id}`);
                     if(el) el.innerText = msgVal.toFixed(1);
                     
-                    // Aktualizace grafu
+                    // Přidání do grafu (navazujeme na historii)
                     myChart.data.datasets[index].data.push({x: now, y: msgVal});
-                    if (myChart.data.datasets[index].data.length > 50) {
+                    
+                    // Aby graf nebyl nekonečný, mažeme velmi stará data (držíme cca 24h při minutovém intervalu)
+                    if (myChart.data.datasets[index].data.length > 2000) {
                         myChart.data.datasets[index].data.shift();
                     }
                     myChart.update('none');
