@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel - Místnosti</title>
+    <!-- Odkaz na sdílený CSS soubor -->
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+</head>
+<body>
+
+    <!-- NAVIGACE -->
+    <nav class="navbar">
+        <a href="teplomer.html" class="navbar-brand">Panel Lorda Vojtěcha</a>
+        <div class="nav-links">
+            <a href="teplomer.html" class="nav-btn active">Místnosti</a>
+            <a href="kotelna.html" class="nav-btn">Kotelna</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="status">Připojování k MQTT...</div>
+        <br>
+
+        <!-- GRID PRO KARTY MÍSTNOSTÍ -->
+        <div id="dashboard-rooms" class="dashboard-grid">
+            <!-- Karty se generují automaticky přes JS -->
+        </div>
+
+        <!-- GRAF -->
+        <div class="chart-container">
+            <canvas id="tempChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. KONFIGURACE SENZORŮ PRO MÍSTNOSTI ---
+        const senzorKonfig = [
+            { 
+                id: 'obyvak', 
+                nazev: 'Obývák', 
+                topicTemp: 'doma/obyvak/teplota', 
+                topicHum: 'doma/obyvak/vlhkost',
+                color: '#3498db' 
+            }
+            // Zde lze přidat další místnost (např. {id: 'loznice', ...})
+        ];
+
+        // --- 2. MQTT KONFIGURACE ---
+        const mqttOptions = {
+            protocol: 'wss',
+            hostname: 'broker.emqx.io', 
+            port: 8084,
+            path: '/mqtt',
+            clientId: 'LordRooms_' + Math.random().toString(16).substr(2, 8)
+        };
+
+        // --- 3. GENERUJ HTML KARTY ---
+        const dashboardRooms = document.getElementById('dashboard-rooms');
+        senzorKonfig.forEach(senzor => {
+            const html = `
+                <div class="card" style="border-top-color: ${senzor.color}">
+                    <span class="card-icon">🏠</span>
+                    <h2>${senzor.nazev}</h2>
+                    <div class="data-row">
+                        <span class="data-label">Teplota</span>
+                        <div><span id="val-temp-${senzor.id}" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Vlhkost</span>
+                        <div><span id="val-hum-${senzor.id}" class="data-value">--</span> <span class="data-unit">%</span></div>
+                    </div>
+                </div>
+            `;
+            dashboardRooms.innerHTML += html;
+        });
+
+        // --- 4. INICIALIZACE GRAFU ---
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: senzorKonfig.map(s => ({
+                    label: s.nazev,
+                    borderColor: s.color,
+                    backgroundColor: s.color,
+                    data: [],
+                    tension: 0.4,
+                    borderWidth: 2
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { type: 'time', time: { unit: 'second', tooltipFormat: 'HH:mm:ss' } },
+                    y: { suggestedMin: 18, suggestedMax: 28 }
+                },
+                plugins: { title: { display: true, text: 'Vývoj teplot v čase' } }
+            }
+        });
+
+        // --- 5. LOGIKA PŘIPOJENÍ ---
+        const client = mqtt.connect(mqttOptions);
+        const statusEl = document.getElementById('status');
+
+        client.on('connect', () => {
+            statusEl.innerHTML = '<span class="online">● Online - Místnosti</span>';
+            senzorKonfig.forEach(s => {
+                client.subscribe(s.topicTemp);
+                client.subscribe(s.topicHum);
+            });
+        });
+
+        client.on('message', (topic, message) => {
+            const msgVal = parseFloat(message.toString());
+            const now = new Date();
+
+            senzorKonfig.forEach((s, index) => {
+                if (topic === s.topicTemp) {
+                    const el = document.getElementById(`val-temp-${s.id}`);
+                    if(el) el.innerText = msgVal.toFixed(1);
+                    
+                    // Aktualizace grafu
+                    myChart.data.datasets[index].data.push({x: now, y: msgVal});
+                    if (myChart.data.datasets[index].data.length > 50) {
+                        myChart.data.datasets[index].data.shift();
+                    }
+                    myChart.update('none');
+
+                } else if (topic === s.topicHum) {
+                    const el = document.getElementById(`val-hum-${s.id}`);
+                    if(el) el.innerText = msgVal.toFixed(0);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

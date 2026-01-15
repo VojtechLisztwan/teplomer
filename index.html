@@ -3,212 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Lorda Vojtěcha</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
-
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-        }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
-        
-        /* Grid pro karty senzorů */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            max-width: 1200px;
-            margin: 0 auto 40px auto;
-        }
-
-        .card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            text-align: center;
-            border-top: 5px solid #3498db; /* Modrá linka nahoře */
-        }
-
-        .card h2 { margin-top: 0; font-size: 1.2rem; color: #7f8c8d; }
-        
-        .data-container {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-        }
-        .data-box { text-align: center; }
-        .data-value { font-size: 2rem; font-weight: bold; color: #2c3e50; }
-        .data-unit { font-size: 0.9rem; color: #95a5a6; }
-        .data-label { font-size: 0.8rem; text-transform: uppercase; color: #bdc3c7; letter-spacing: 1px; }
-
-        /* Styl pro graf */
-        .chart-container {
-            background: white;
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            max-width: 1200px;
-            margin: 0 auto;
-            height: 400px;
-        }
-        
-        #status {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.8rem;
-            color: #bdc3c7;
-        }
-        .online { color: #27ae60 !important; font-weight: bold; }
-    </style>
+    <title>Panel Lorda Vojtěcha - Rozcestník</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <h1>🏰 Sídlo Lorda Vojtěcha</h1>
+    <!-- NAVIGACE (Zjednodušená pro index) -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">Panel Lorda Vojtěcha</a>
+        <div class="nav-links">
+            <!-- Zde můžete přidat třeba odkaz na nastavení v budoucnu -->
+        </div>
+    </nav>
 
-    <div id="dashboard" class="dashboard-grid"></div>
+    <div class="container welcome-section">
+        <h1>Vítejte, Lorde Vojtěchu</h1>
+        <p class="welcome-subtitle">Vyberte sekci, kterou chcete zobrazit</p>
 
-    <div class="chart-container">
-        <canvas id="tempChart"></canvas>
+        <!-- GRID PRO ROZCESTNÍK -->
+        <div class="dashboard-grid">
+            
+            <!-- Odkaz na MÍSTNOSTI -->
+            <a href="teplomer.html" class="card-link">
+                <div class="card" style="border-top-color: #3498db;">
+                    <span class="card-icon" style="font-size: 4rem; margin-bottom: 20px;">🏠</span>
+                    <h2 style="border:none; margin-bottom:0; color: #2c3e50; font-weight: bold;">Místnosti</h2>
+                    <p class="card-desc">
+                        Přehled teplot a vlhkosti v obytných prostorách.<br>
+                        Obsahuje interaktivní grafy historie.
+                    </p>
+                </div>
+            </a>
+
+            <!-- Odkaz na KOTELNU -->
+            <a href="kotelna.html" class="card-link">
+                <div class="card card-boiler">
+                    <span class="card-icon" style="font-size: 4rem; margin-bottom: 20px;">🔥</span>
+                    <h2 style="border:none; margin-bottom:0; color: #2c3e50; font-weight: bold;">Kotelna</h2>
+                    <p class="card-desc">
+                        Technické zázemí domu.<br>
+                        Stav pece, bojlerů a solárního ohřevu.
+                    </p>
+                </div>
+            </a>
+
+        </div>
     </div>
 
-    <div id="status">Připojování k MQTT...</div>
+    <!-- PATA STRÁNKY (VOLITELNÉ) -->
+    <footer style="text-align: center; color: #bdc3c7; padding: 20px; font-size: 0.8rem; margin-top: auto;">
+        Systém monitorování teplot &copy; 2025
+    </footer>
 
-    <script>
-        // --- 1. KONFIGURACE SENZORŮ (ZDE PŘIDÁVEJTE DALŠÍ) ---
-        // Stačí přidat nový objekt do pole a web se sám upraví.
-        const senzorKonfig = [
-            { 
-                id: 'obyvak', 
-                nazev: 'Trůnní sál (Obývák)', 
-                topicTemp: 'doma/obyvak/teplota', 
-                topicHum: 'doma/obyvak/vlhkost',
-                color: '#e74c3c' // Barva čáry v grafu (červená)
-            }
-            // Zde můžete přidat čárku a další { ... }
-        ];
-
-        // --- 2. KONFIGURACE MQTT (EMQX) ---
-        const mqttOptions = {
-            protocol: 'wss',
-            hostname: 'ode2c9e6.ala.eu-central-1.emqxsl.com',
-            port: 8084,
-            path: '/mqtt',
-            username: 'web', // Použijte READ-ONLY uživatele!
-            password: 'webpassword', 
-            clientId: 'LordWeb_' + Math.random().toString(16).substr(2, 8)
-        };
-        // --------------------------------------------------------
-
-        // Generování HTML kartiček
-        const dashboard = document.getElementById('dashboard');
-        
-        senzorKonfig.forEach(senzor => {
-            const html = `
-                <div class="card" style="border-top-color: ${senzor.color}">
-                    <h2>${senzor.nazev}</h2>
-                    <div class="data-container">
-                        <div class="data-box">
-                            <span class="data-label">Teplota</span><br>
-                            <span id="val-temp-${senzor.id}" class="data-value">--</span> 
-                            <span class="data-unit">°C</span>
-                        </div>
-                        <div class="data-box">
-                            <span class="data-label">Vlhkost</span><br>
-                            <span id="val-hum-${senzor.id}" class="data-value">--</span> 
-                            <span class="data-unit">%</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-            dashboard.innerHTML += html;
-        });
-
-        // Příprava Grafu
-        const ctx = document.getElementById('tempChart').getContext('2d');
-        const chartData = {
-            datasets: senzorKonfig.map(s => ({
-                label: s.nazev,
-                borderColor: s.color,
-                backgroundColor: s.color,
-                data: [], // Zde se budou ukládat body
-                tension: 0.4,
-                borderWidth: 2
-            }))
-        };
-
-        const myChart = new Chart(ctx, {
-            type: 'line',
-            data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: { unit: 'second', tooltipFormat: 'HH:mm:ss' },
-                        title: { display: true, text: 'Čas' }
-                    },
-                    y: {
-                        title: { display: true, text: 'Teplota (°C)' },
-                        suggestedMin: 15,
-                        suggestedMax: 30
-                    }
-                },
-                plugins: {
-                    title: { display: true, text: 'Vývoj teplot v čase (Živá data)' }
-                }
-            }
-        });
-
-        // Logika MQTT
-        const client = mqtt.connect(mqttOptions);
-        const statusEl = document.getElementById('status');
-
-        client.on('connect', () => {
-            statusEl.innerHTML = '<span class="online">● Připojeno k systému panství</span>';
-            console.log('MQTT Connected');
-            
-            // Odběr témat pro všechny senzory
-            senzorKonfig.forEach(s => {
-                client.subscribe(s.topicTemp);
-                client.subscribe(s.topicHum);
-            });
-        });
-
-        client.on('message', (topic, message) => {
-            const msgVal = parseFloat(message.toString());
-            const now = new Date();
-
-            // Najdeme, ke kterému senzoru data patří
-            senzorKonfig.forEach((s, index) => {
-                // 1. Aktualizace čísel na kartě
-                if (topic === s.topicTemp) {
-                    document.getElementById(`val-temp-${s.id}`).innerText = msgVal.toFixed(1);
-                    
-                    // Přidání do grafu (jen teplota)
-                    myChart.data.datasets[index].data.push({x: now, y: msgVal});
-                    
-                    // Aby graf nebyl nekonečný, mažeme stará data (držíme posledních 50 bodů)
-                    if (myChart.data.datasets[index].data.length > 50) {
-                        myChart.data.datasets[index].data.shift();
-                    }
-                    myChart.update();
-
-                } else if (topic === s.topicHum) {
-                    document.getElementById(`val-hum-${s.id}`).innerText = msgVal.toFixed(0);
-                }
-            });
-        });
-
-        client.on('error', (err) => { console.error(err); statusEl.innerText = 'Chyba spojení'; });
-    </script>
 </body>
 </html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel - Kotelna</title>
+    <!-- Odkaz na sdílený CSS soubor -->
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+
+    <!-- NAVIGACE -->
+    <nav class="navbar">
+        <a href="teplomer.html" class="navbar-brand">Panel Lorda Vojtěcha</a>
+        <div class="nav-links">
+            <a href="teplomer.html" class="nav-btn">Místnosti</a>
+            <a href="kotelna.html" class="nav-btn active">Kotelna</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="status">Připojování k MQTT...</div>
+        <br>
+
+        <!-- GRID PRO KOTELNU -->
+        <div class="dashboard-grid">
+                
+            <!-- Karta: Kotel -->
+            <div class="card card-boiler">
+                <span class="card-icon">🔥</span>
+                <h2>Hlavní Kotel</h2>
+                <div class="data-row">
+                    <span class="data-label">Teplota Pece</span>
+                    <div>
+                        <span id="val-pec" class="data-value">--</span> <span class="data-unit">°C</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Karta: Nový Bojler -->
+            <div class="card">
+                <span class="card-icon">💧</span>
+                <h2>Nový Bojler</h2>
+                <div class="data-row">
+                    <span class="data-label">Horní</span>
+                    <div><span id="val-horni_n" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Střední</span>
+                    <div><span id="val-stredni_n" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Dolní</span>
+                    <div><span id="val-dolni_n" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                </div>
+            </div>
+
+            <!-- Karta: Starý Bojler -->
+            <div class="card card-old">
+                <span class="card-icon">🏚️</span>
+                <h2>Starý Bojler</h2>
+                <div class="data-row">
+                    <span class="data-label">Horní</span>
+                    <div><span id="val-horni_s" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Dolní</span>
+                    <div><span id="val-dolni_s" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                </div>
+            </div>
+
+            <!-- Karta: Solární Panel -->
+            <div class="card card-solar">
+                <span class="card-icon">☀️</span>
+                <h2>Solární Panel</h2>
+                <div class="data-row">
+                    <span class="data-label">Teplota kolektoru</span>
+                    <div>
+                        <span id="val-solarni" class="data-value">--</span> <span class="data-unit">°C</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- 1. MAPOVÁNÍ TOPIC -> HTML ID ---
+        const heatingMap = {
+            'pec': 'val-pec',
+            'horni_n': 'val-horni_n',
+            'stredni_n': 'val-stredni_n',
+            'dolni_n': 'val-dolni_n',
+            'horni_s': 'val-horni_s',
+            'dolni_s': 'val-dolni_s',
+            'solarni': 'val-solarni'
+        };
+
+        // --- 2. MQTT KONFIGURACE ---
+        const mqttOptions = {
+            protocol: 'wss',
+            hostname: 'broker.emqx.io', 
+            port: 8084,
+            path: '/mqtt',
+            clientId: 'LordHeat_' + Math.random().toString(16).substr(2, 8)
+        };
+
+        // --- 3. LOGIKA PŘIPOJENÍ ---
+        const client = mqtt.connect(mqttOptions);
+        const statusEl = document.getElementById('status');
+
+        client.on('connect', () => {
+            statusEl.innerHTML = '<span class="online">● Online - Kotelna</span>';
+            
+            // Odběr témat
+            Object.keys(heatingMap).forEach(topic => {
+                client.subscribe(topic);
+            });
+        });
+
+        client.on('message', (topic, message) => {
+            if (heatingMap[topic]) {
+                const msgVal = parseFloat(message.toString());
+                const elementId = heatingMap[topic];
+                const el = document.getElementById(elementId);
+                
+                if (el) {
+                    el.innerText = msgVal.toFixed(1);
+                    
+                    // Efekt aktualizace (bliknutí barvy)
+                    el.style.color = '#3498db';
+                    setTimeout(() => el.style.color = '', 300);
+                }
+            }
+        });
+
+        client.on('error', (err) => { 
+            console.error(err); 
+            statusEl.innerText = 'Chyba spojení s MQTT'; 
+            statusEl.style.color = 'red';
+        });
+    </script>
+</body>
+</html>
