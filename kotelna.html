@@ -12,6 +12,40 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+
+    <style>
+        /* Specifické styly pro ovládání grafu */
+        .chart-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .range-btn {
+            background-color: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            color: #2c3e50;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .range-btn:hover {
+            background-color: #dfe6e9;
+            transform: translateY(-1px);
+        }
+
+        .range-btn.active {
+            background-color: #3498db; /* Primary blue */
+            color: white;
+            border-color: #3498db;
+            box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+        }
+    </style>
 </head>
 <body>
 
@@ -91,7 +125,17 @@
 
         <!-- NOVÉ: Sekce pro Graf -->
         <div class="chart-container">
-            <canvas id="kotelnaChart"></canvas>
+            <!-- Ovládací tlačítka pro časové období -->
+            <div class="chart-controls">
+                <button onclick="changeRange(360, this)" class="range-btn">6h</button>
+                <button onclick="changeRange(720, this)" class="range-btn">12h</button>
+                <button onclick="changeRange(1440, this)" class="range-btn active">24h</button>
+                <button onclick="changeRange(4320, this)" class="range-btn">3 Dny</button>
+            </div>
+            
+            <div style="position: relative; height: 340px;"> <!-- Obal pro canvas pro lepší kontrolu výšky -->
+                <canvas id="kotelnaChart"></canvas>
+            </div>
         </div>
 
     </div>
@@ -99,8 +143,8 @@
     <script>
         // --- 1. KONFIGURACE THINGSPEAK ---
         const tsConfig = {
-            channelID: '3229890', // Např. 123456
-            readKey: 'WB281UEYF211LC92'     // Váš Read API Key
+            channelID: '3229890', 
+            readKey: 'WB281UEYF211LC92'
         };
 
         // --- 2. DEFINICE DAT PRO GRAF ---
@@ -137,7 +181,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { type: 'time', time: { unit: 'hour', tooltipFormat: 'HH:mm' }, title: {display: true, text: 'Čas (posledních 24h)'} },
+                    x: { type: 'time', time: { unit: 'hour', tooltipFormat: 'HH:mm' }, title: {display: true, text: 'Čas'} },
                     y: { title: {display: true, text: 'Teplota (°C)'} }
                 },
                 plugins: {
@@ -148,16 +192,23 @@
         });
 
         // --- 4. NAČTENÍ DAT Z THINGSPEAK ---
-        async function loadHistory() {
+        // resultCount = počet záznamů (při 1 min intervalu: 360 = 6h, 1440 = 24h)
+        async function loadHistory(resultCount = 1440) {
             if(tsConfig.channelID === 'VLOZTE_ID_KANALU') { console.log("Nenastaveno ID kanálu"); return; }
             
-            // Stáhneme posledních 1440 záznamů (24h při intervalu 1min)
-            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=1440`;
+            // Indikace načítání v titulku grafu
+            myChart.options.plugins.title.text = 'Načítám data...';
+            myChart.update('none');
+
+            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=${resultCount}`;
             
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 
+                // Vyčistit stará data před načtením nových
+                myChart.data.datasets.forEach(ds => ds.data = []);
+
                 if (data.feeds) {
                     data.feeds.forEach(feed => {
                         const time = new Date(feed.created_at);
@@ -171,13 +222,30 @@
                             }
                         });
                     });
+                    
+                    // Aktualizace titulku a grafu
+                    myChart.options.plugins.title.text = `Historie teplot (posledních ${data.feeds.length} záznamů)`;
                     myChart.update();
                 }
-            } catch (e) { console.error("Chyba stahování historie:", e); }
+            } catch (e) { 
+                console.error("Chyba stahování historie:", e); 
+                myChart.options.plugins.title.text = 'Chyba při načítání dat';
+                myChart.update();
+            }
         }
 
-        // Spustit načítání
-        loadHistory();
+        // Funkce pro změnu rozsahu (tlačítka)
+        function changeRange(count, btn) {
+            // Aktualizace vzhledu tlačítek
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Načtení dat
+            loadHistory(count);
+        }
+
+        // Spustit načítání (default 24h)
+        loadHistory(1440);
 
         // --- 5. MQTT LOGIKA (ŽIVÁ DATA) ---
         const heatingMap = {
