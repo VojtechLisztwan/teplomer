@@ -8,12 +8,16 @@
     <link rel="stylesheet" href="style.css">
     
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <!-- Knihovny pro graf -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
 </head>
 <body>
 
     <!-- NAVIGACE -->
     <nav class="navbar">
-        <a href="teplomer.html" class="navbar-brand">teploty</a>
+        <a href="index.html" class="navbar-brand">Panel Lorda Vojtěcha</a>
         <div class="nav-links">
             <a href="teplomer.html" class="nav-btn">Místnosti</a>
             <a href="kotelna.html" class="nav-btn active">Kotelna</a>
@@ -24,7 +28,7 @@
         <div id="status">Připojování k MQTT...</div>
         <br>
 
-        <!-- GRID PRO KOTELNU -->
+        <!-- GRID PRO KOTELNU (Živá data) -->
         <div class="dashboard-grid">
                 
             <!-- Karta: Kotel -->
@@ -84,10 +88,98 @@
             </div>
 
         </div>
+
+        <!-- NOVÉ: Sekce pro Graf -->
+        <div class="chart-container">
+            <canvas id="kotelnaChart"></canvas>
+        </div>
+
     </div>
 
     <script>
-        // --- 1. MAPOVÁNÍ TOPIC -> HTML ID ---
+        // --- 1. KONFIGURACE THINGSPEAK ---
+        const tsConfig = {
+            channelID: '3229890', // Např. 123456
+            readKey: 'WB281UEYF211LC92'     // Váš Read API Key
+        };
+
+        // --- 2. DEFINICE DAT PRO GRAF ---
+        // Mapování polí (field1..7) na názvy a barvy
+        const datasetsConfig = [
+            { field: 'field1', label: 'Pec', color: '#e74c3c' },        // Červená
+            { field: 'field2', label: 'Bojler N-Horní', color: '#3498db' }, // Modrá
+            { field: 'field3', label: 'Bojler N-Střed', color: '#5dade2' }, // Světle modrá
+            { field: 'field4', label: 'Bojler N-Dolní', color: '#85c1e9' }, // Bledě modrá
+            { field: 'field5', label: 'Bojler S-Horní', color: '#7f8c8d' }, // Šedá
+            { field: 'field6', label: 'Bojler S-Dolní', color: '#bdc3c7' }, // Světle šedá
+            { field: 'field7', label: 'Solár', color: '#f39c12' }           // Oranžová
+        ];
+
+        // --- 3. INICIALIZACE GRAFU ---
+        const ctx = document.getElementById('kotelnaChart').getContext('2d');
+        const chartData = {
+            datasets: datasetsConfig.map(ds => ({
+                label: ds.label,
+                borderColor: ds.color,
+                backgroundColor: ds.color,
+                data: [], 
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHitRadius: 10
+            }))
+        };
+
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { type: 'time', time: { unit: 'hour', tooltipFormat: 'HH:mm' }, title: {display: true, text: 'Čas (posledních 24h)'} },
+                    y: { title: {display: true, text: 'Teplota (°C)'} }
+                },
+                plugins: {
+                    title: { display: true, text: 'Historie teplot v kotelně' },
+                    tooltip: { mode: 'index', intersect: false }
+                }
+            }
+        });
+
+        // --- 4. NAČTENÍ DAT Z THINGSPEAK ---
+        async function loadHistory() {
+            if(tsConfig.channelID === 'VLOZTE_ID_KANALU') { console.log("Nenastaveno ID kanálu"); return; }
+            
+            // Stáhneme posledních 1440 záznamů (24h při intervalu 1min)
+            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=1440`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.feeds) {
+                    data.feeds.forEach(feed => {
+                        const time = new Date(feed.created_at);
+                        
+                        // Projdeme všechny nadefinované datasety (Pec, Bojlery...)
+                        datasetsConfig.forEach((ds, index) => {
+                            // ds.field je 'field1', 'field2' atd.
+                            const val = parseFloat(feed[ds.field]);
+                            if(!isNaN(val)) {
+                                myChart.data.datasets[index].data.push({x: time, y: val});
+                            }
+                        });
+                    });
+                    myChart.update();
+                }
+            } catch (e) { console.error("Chyba stahování historie:", e); }
+        }
+
+        // Spustit načítání
+        loadHistory();
+
+        // --- 5. MQTT LOGIKA (ŽIVÁ DATA) ---
         const heatingMap = {
             'pec': 'val-pec',
             'horni_n': 'val-horni_n',
@@ -98,7 +190,6 @@
             'solarni': 'val-solarni'
         };
 
-        // --- 2. MQTT KONFIGURACE ---
         const mqttOptions = {
             protocol: 'wss',
             hostname: 'broker.emqx.io', 
@@ -107,17 +198,12 @@
             clientId: 'LordHeat_' + Math.random().toString(16).substr(2, 8)
         };
 
-        // --- 3. LOGIKA PŘIPOJENÍ ---
         const client = mqtt.connect(mqttOptions);
         const statusEl = document.getElementById('status');
 
         client.on('connect', () => {
             statusEl.innerHTML = '<span class="online">● Online - Kotelna</span>';
-            
-            // Odběr témat
-            Object.keys(heatingMap).forEach(topic => {
-                client.subscribe(topic);
-            });
+            Object.keys(heatingMap).forEach(topic => client.subscribe(topic));
         });
 
         client.on('message', (topic, message) => {
@@ -128,8 +214,6 @@
                 
                 if (el) {
                     el.innerText = msgVal.toFixed(1);
-                    
-                    // Efekt aktualizace (bliknutí barvy)
                     el.style.color = '#3498db';
                     setTimeout(() => el.style.color = '', 300);
                 }
