@@ -24,7 +24,7 @@
     </nav>
 
     <div class="container">
-        <div id="status">Připojování k MQTT...</div>
+        <div id="status">Připojování k ThingSpeak MQTT...</div>
         <br>
 
         <!-- GRID PRO KARTY MÍSTNOSTÍ -->
@@ -39,37 +39,27 @@
     </div>
 
     <script>
-        // --- 1. KONFIGURACE SENZORŮ PRO MÍSTNOSTI ---
+        // --- 1. KONFIGURACE THINGSPEAK ---
+        // ZDE ZADEJTE SVÉ ÚDAJE
+        const tsConfig = {
+            channelID: '3011617', 
+            readKey: 'BMX38S8R8XSRK5YR'
+        };
+
+        // --- 2. KONFIGURACE SENZORŮ PRO MÍSTNOSTI ---
+        // Nyní mapujeme senzory na "Fields" v ThingSpeak kanálu
         const senzorKonfig = [
             { 
                 id: 'obyvak', 
                 nazev: 'Obývák', 
-                topicTemp: 'doma/obyvak/teplota', 
-                topicHum: 'doma/obyvak/vlhkost',
-                color: '#3498db',
-                thingSpeakField: 'field1' 
+                fieldTemp: 'field1', // Teplota je v grafu 1
+                fieldHum: 'field2',  // Vlhkost je v grafu 2
+                color: '#3498db'
             }
+            // Zde můžete přidat další místnosti mapované na field3, field4 atd.
         ];
 
-        // --- 2. KONFIGURACE THINGSPEAK (PRO HISTORII) ---
-        const tsConfig = {
-            enabled: true, 
-            channelID: 'VLOZTE_CHANNEL_ID', 
-            readKey: 'VLOZTE_READ_API_KEY'  
-        };
-
-        // --- 3. MQTT KONFIGURACE (PŮVODNÍ SERVER) ---
-        const mqttOptions = {
-            protocol: 'wss',
-            hostname: 'ode2c9e6.ala.eu-central-1.emqxsl.com', 
-            port: 8084,
-            path: '/mqtt',
-            username: 'web', 
-            password: 'webpassword', 
-            clientId: 'WebMonitor_Rooms_' + Math.random().toString(16).substr(2, 8)
-        };
-
-        // --- 4. GENERUJ HTML KARTY ---
+        // --- 3. GENERUJ HTML KARTY ---
         const dashboardRooms = document.getElementById('dashboard-rooms');
         senzorKonfig.forEach(senzor => {
             const html = `
@@ -89,7 +79,7 @@
             dashboardRooms.innerHTML += html;
         });
 
-        // --- 5. INICIALIZACE GRAFU ---
+        // --- 4. INICIALIZACE GRAFU ---
         const ctx = document.getElementById('tempChart').getContext('2d');
         const myChart = new Chart(ctx, {
             type: 'line',
@@ -112,40 +102,128 @@
                     x: { 
                         type: 'time', 
                         time: { unit: 'hour', tooltipFormat: 'HH:mm' },
-                        title: { display: true, text: 'Čas (posledních 24h)' }
+                        title: { display: true, text: 'Čas' }
                     },
                     y: { suggestedMin: 18, suggestedMax: 28 }
                 },
                 plugins: { 
-                    title: { display: true, text: 'Vývoj teplot v čase' },
+                    title: { display: true, text: 'Vývoj teplot (Data z ThingSpeak)' },
                     tooltip: { mode: 'index', intersect: false }
                 }
             }
         });
 
-        // --- 6. NAČTENÍ HISTORIE Z THINGSPEAK ---
-        async function loadHistory() {
-            if (!tsConfig.enabled || tsConfig.channelID === 'VLOZTE_CHANNEL_ID') {
-                console.log("ThingSpeak není nastaven.");
+        // --- 5. MQTT LOGIKA (ThingSpeak Broker) ---
+        // ThingSpeak MQTT WebSocket běží na wss://mqtt.thingspeak.com
+        const mqttOptions = {
+            protocol: 'wss',
+            hostname: 'mqtt.thingspeak.com',
+            port: 443,
+            clientId: 'WebClient_' + Math.random().toString(16).substr(2, 8),
+            // Pro veřejné kanály není nutné jméno/heslo.
+            // Pro privátní kanály může být potřeba 'username' a 'password' (váš MQTT API Key z profilu).
+            clean: true
+        };
+
+        const client = mqtt.connect(mqttOptions);
+        const statusEl = document.getElementById('status');
+
+        client.on('connect', () => {
+            if (tsConfig.channelID === '3011617') {
+                statusEl.innerHTML = '<span style="color:red">Chybí nastavení Channel ID!</span>';
                 return;
             }
+            
+            statusEl.innerHTML = '<span class="online">● Připojeno k ThingSpeak MQTT</span>';
+            
+            // Odběr celého kanálu (všechny fields najednou)
+            // Formát: channels/<channelID>/subscribe
+            const topic = `channels/${tsConfig.channelID}/subscribe`;
+            client.subscribe(topic);
+            console.log("Odebírám topic:", topic);
+        });
 
-            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=1000`;
+        client.on('message', (topic, message) => {
+            try {
+                // ThingSpeak posílá data jako JSON objekt
+                // Příklad: {"created_at":"2025-01-01T12:00:00Z", "field1":"22.5", "field2":"45"}
+                const data = JSON.parse(message.toString());
+                const now = new Date(data.created_at || new Date());
+
+                senzorKonfig.forEach((s, index) => {
+                    // Zpracování teploty (pokud přišla v payloadu)
+                    if (data[s.fieldTemp] !== undefined) {
+                        const tempVal = parseFloat(data[s.fieldTemp]);
+                        
+                        // Aktualizace čísla na kartě
+                        const elTemp = document.getElementById(`val-temp-${s.id}`);
+                        if(elTemp) {
+                            elTemp.innerText = tempVal.toFixed(1);
+                            // Efekt bliknutí pro aktualizaci
+                            elTemp.style.color = '#e67e22'; 
+                            setTimeout(() => elTemp.style.color = '', 500);
+                        }
+
+                        // Přidání do grafu
+                        myChart.data.datasets[index].data.push({x: now, y: tempVal});
+                    }
+
+                    // Zpracování vlhkosti
+                    if (data[s.fieldHum] !== undefined) {
+                        const humVal = parseFloat(data[s.fieldHum]);
+                        const elHum = document.getElementById(`val-hum-${s.id}`);
+                        if(elHum) elHum.innerText = humVal.toFixed(0);
+                    }
+                });
+
+                // Posun grafu, aby nebyl přeplněný
+                senzorKonfig.forEach((s, index) => {
+                     if (myChart.data.datasets[index].data.length > 200) {
+                        myChart.data.datasets[index].data.shift();
+                    }
+                });
+                myChart.update('none');
+
+            } catch (e) {
+                console.error("Chyba při zpracování MQTT zprávy:", e);
+            }
+        });
+
+        client.on('error', (err) => { 
+            console.error(err); 
+            statusEl.innerText = 'Chyba spojení s ThingSpeak MQTT'; 
+            statusEl.style.color = 'red';
+        });
+
+        // --- 6. NAČTENÍ HISTORIE (REST API) ---
+        // Toto se spustí při načtení stránky, aby graf nebyl prázdný
+        async function loadHistory() {
+            if (tsConfig.channelID === '3011617') return;
+
+            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=100`;
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.feeds) {
+                    // Vymazání starých dat před načtením historie
+                    myChart.data.datasets.forEach(ds => ds.data = []);
+
                     data.feeds.forEach(feed => {
                         const time = new Date(feed.created_at);
                         senzorKonfig.forEach((senzor, index) => {
-                            const fieldName = senzor.thingSpeakField; 
-                            const val = parseFloat(feed[fieldName]);
-                            
+                            const val = parseFloat(feed[senzor.fieldTemp]);
                             if (!isNaN(val)) {
                                 myChart.data.datasets[index].data.push({x: time, y: val});
                             }
+                            
+                            // Nastavení poslední známé hodnoty do karet (aby tam nebylo --)
+                            const lastTemp = parseFloat(feed[senzor.fieldTemp]);
+                            const lastHum = parseFloat(feed[senzor.fieldHum]);
+                            
+                            if(!isNaN(lastTemp)) document.getElementById(`val-temp-${senzor.id}`).innerText = lastTemp.toFixed(1);
+                            if(!isNaN(lastHum)) document.getElementById(`val-hum-${senzor.id}`).innerText = lastHum.toFixed(0);
                         });
                     });
                     myChart.update();
@@ -155,47 +233,9 @@
             }
         }
 
+        // Spustit načtení historie
         loadHistory();
 
-        // --- 7. MQTT LOGIKA (ŽIVÁ DATA) ---
-        const client = mqtt.connect(mqttOptions);
-        const statusEl = document.getElementById('status');
-
-        client.on('connect', () => {
-            statusEl.innerHTML = '<span class="online">● Online - Místnosti (Privátní Server)</span>';
-            senzorKonfig.forEach(s => {
-                client.subscribe(s.topicTemp);
-                client.subscribe(s.topicHum);
-            });
-        });
-
-        client.on('message', (topic, message) => {
-            const msgVal = parseFloat(message.toString());
-            const now = new Date();
-
-            senzorKonfig.forEach((s, index) => {
-                if (topic === s.topicTemp) {
-                    const el = document.getElementById(`val-temp-${s.id}`);
-                    if(el) el.innerText = msgVal.toFixed(1);
-                    
-                    myChart.data.datasets[index].data.push({x: now, y: msgVal});
-                    if (myChart.data.datasets[index].data.length > 2000) {
-                        myChart.data.datasets[index].data.shift();
-                    }
-                    myChart.update('none');
-
-                } else if (topic === s.topicHum) {
-                    const el = document.getElementById(`val-hum-${s.id}`);
-                    if(el) el.innerText = msgVal.toFixed(0);
-                }
-            });
-        });
-        
-        client.on('error', (err) => { 
-            console.error(err); 
-            statusEl.innerText = 'Chyba spojení s MQTT'; 
-            statusEl.style.color = 'red';
-        });
     </script>
 </body>
 </html>
