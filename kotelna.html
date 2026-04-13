@@ -19,7 +19,7 @@
             display: flex;
             justify-content: center;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             flex-wrap: wrap;
         }
 
@@ -40,10 +40,41 @@
         }
 
         .range-btn.active {
-            background-color: #3498db; /* Primary blue */
+            background-color: #3498db;
             color: white;
             border-color: #3498db;
             box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+        }
+
+        /* Styly pro přepínače křivek (filtr dat) */
+        .toggle-btn {
+            padding: 4px 12px;
+            border-radius: 15px;
+            border: 2px solid;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: all 0.2s;
+            background-color: transparent;
+        }
+        .toggle-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Styly pro vlastní vstup hodin */
+        .range-input {
+            border: 1px solid #bdc3c7;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            width: 70px;
+            outline: none;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .range-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
         }
     </style>
 </head>
@@ -123,17 +154,26 @@
 
         </div>
 
-        <!-- NOVÉ: Sekce pro Graf -->
-        <div class="chart-container">
-            <!-- Ovládací tlačítka pro časové období -->
-            <div class="chart-controls">
-                <button onclick="changeRange(360, this)" class="range-btn">6h</button>
-                <button onclick="changeRange(720, this)" class="range-btn">12h</button>
-                <button onclick="changeRange(1440, this)" class="range-btn active">24h</button>
-                <button onclick="changeRange(4320, this)" class="range-btn">3 Dny</button>
+        <!-- Sekce pro Graf -->
+        <div class="chart-container" style="height: auto; padding-bottom: 30px;">
+            
+            <!-- Přepínače zobrazených hodnot v grafu -->
+            <div id="dataset-toggles" class="chart-controls" style="margin-bottom: 20px;">
+                <!-- Tlačítka se vygenerují automaticky přes JS -->
+            </div>
+
+            <!-- Ovládací tlačítka pro časové období (předáváme počet hodin) -->
+            <div class="chart-controls" style="align-items: center;">
+                <button onclick="changeRange(6, this)" class="range-btn">6h</button>
+                <button onclick="changeRange(12, this)" class="range-btn">12h</button>
+                <button onclick="changeRange(24, this)" class="range-btn active">24h</button>
+                <button onclick="changeRange(72, this)" class="range-btn">3 Dny</button>
+                <span style="color: #bdc3c7; margin: 0 5px;">|</span>
+                <input type="number" id="custom-hours" class="range-input" placeholder="Hodin..." min="1" max="720">
+                <button onclick="applyCustomRange(this)" class="range-btn">Použít</button>
             </div>
             
-            <div style="position: relative; height: 340px;"> <!-- Obal pro canvas pro lepší kontrolu výšky -->
+            <div style="position: relative; height: 340px;"> 
                 <canvas id="kotelnaChart"></canvas>
             </div>
         </div>
@@ -148,18 +188,17 @@
         };
 
         // --- 2. DEFINICE DAT PRO GRAF ---
-        // Mapování polí (field1..7) na názvy a barvy
         const datasetsConfig = [
-            { field: 'field1', label: 'Pec', color: '#e74c3c' },        // Červená
-            { field: 'field2', label: 'Bojler N-Horní', color: '#3498db' }, // Modrá
-            { field: 'field3', label: 'Bojler N-Střed', color: '#5dade2' }, // Světle modrá
-            { field: 'field4', label: 'Bojler N-Dolní', color: '#85c1e9' }, // Bledě modrá
-            { field: 'field5', label: 'Bojler S-Horní', color: '#7f8c8d' }, // Šedá
-            { field: 'field6', label: 'Bojler S-Dolní', color: '#bdc3c7' }, // Světle šedá
-            { field: 'field7', label: 'Solár', color: '#f39c12' }           // Oranžová
+            { field: 'field1', label: 'Pec', color: '#e74c3c' },
+            { field: 'field2', label: 'Bojler N-Horní', color: '#3498db' },
+            { field: 'field3', label: 'Bojler N-Střed', color: '#5dade2' },
+            { field: 'field4', label: 'Bojler N-Dolní', color: '#85c1e9' },
+            { field: 'field5', label: 'Bojler S-Horní', color: '#7f8c8d' },
+            { field: 'field6', label: 'Bojler S-Dolní', color: '#bdc3c7' },
+            { field: 'field7', label: 'Solár', color: '#f39c12' }
         ];
 
-        // --- 3. INICIALIZACE GRAFU ---
+        // --- 3. INICIALIZACE GRAFU A PŘEPÍNAČŮ ---
         const ctx = document.getElementById('kotelnaChart').getContext('2d');
         const chartData = {
             datasets: datasetsConfig.map(ds => ({
@@ -181,41 +220,86 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { type: 'time', time: { unit: 'hour', tooltipFormat: 'HH:mm' }, title: {display: true, text: 'Čas'} },
+                    x: { 
+                        type: 'time', 
+                        time: { unit: 'hour', tooltipFormat: 'dd.MM. yyyy HH:mm' }, 
+                        title: {display: true, text: 'Čas'} 
+                        // min a max se budou nastavovat dynamicky podle vybraného času
+                    },
                     y: { title: {display: true, text: 'Teplota (°C)'} }
                 },
                 plugins: {
                     title: { display: true, text: 'Historie teplot v kotelně' },
-                    tooltip: { mode: 'index', intersect: false }
+                    tooltip: { mode: 'index', intersect: false },
+                    legend: { display: false } // Vypneme výchozí legendu, máme vlastní tlačítka
                 }
             }
         });
 
-        // --- 4. NAČTENÍ DAT Z THINGSPEAK ---
-        // resultCount = počet záznamů (při 1 min intervalu: 360 = 6h, 1440 = 24h)
-        async function loadHistory(resultCount = 1440) {
+        // Generování tlačítek pro filtrování dat
+        const togglesContainer = document.getElementById('dataset-toggles');
+        datasetsConfig.forEach((ds, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'toggle-btn';
+            // Výchozí stav (vše zapnuto)
+            btn.style.borderColor = ds.color;
+            btn.style.backgroundColor = ds.color;
+            btn.style.color = 'white';
+            btn.innerText = ds.label;
+            
+            btn.onclick = () => {
+                const isCurrentlyVisible = myChart.isDatasetVisible(index);
+                // Přepnutí viditelnosti v grafu
+                myChart.setDatasetVisibility(index, !isCurrentlyVisible);
+                
+                // Změna stylu tlačítka
+                if (isCurrentlyVisible) {
+                    btn.style.backgroundColor = 'transparent';
+                    btn.style.color = ds.color; // Vypnuto = pouze barevný rámeček a text
+                } else {
+                    btn.style.backgroundColor = ds.color;
+                    btn.style.color = 'white';  // Zapnuto = plná barva
+                }
+                myChart.update();
+            };
+            togglesContainer.appendChild(btn);
+        });
+
+        // --- 4. NAČTENÍ DAT Z THINGSPEAK PŘES PŘESNÝ ČAS ---
+        async function loadHistory(hoursBack = 24) {
             if(tsConfig.channelID === 'VLOZTE_ID_KANALU') { console.log("Nenastaveno ID kanálu"); return; }
             
-            // Indikace načítání v titulku grafu
             myChart.options.plugins.title.text = 'Načítám data...';
             myChart.update('none');
 
-            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&results=${resultCount}`;
+            // Výpočet přesného času Od - Do
+            const endDate = new Date();
+            const startDate = new Date(endDate.getTime() - (hoursBack * 60 * 60 * 1000));
+
+            // Fixace osy X v grafu. Tím zaručíme, že i když data v noci chybí, 
+            // osa X bude ukazovat přesných X hodin zpětně a výpadek bude vidět jako díra.
+            myChart.options.scales.x.min = startDate.getTime();
+            myChart.options.scales.x.max = endDate.getTime();
+
+            // Formátování času pro ThingSpeak API (vyžaduje ISO 8601 nebo specifický tvar)
+            const startStr = startDate.toISOString();
+            const endStr = endDate.toISOString();
+
+            // Používáme parametry start a end místo results
+            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&start=${startStr}&end=${endStr}`;
             
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                // Vyčistit stará data před načtením nových
+                // Vyčistit stará data
                 myChart.data.datasets.forEach(ds => ds.data = []);
 
                 if (data.feeds) {
                     data.feeds.forEach(feed => {
                         const time = new Date(feed.created_at);
                         
-                        // Projdeme všechny nadefinované datasety (Pec, Bojlery...)
                         datasetsConfig.forEach((ds, index) => {
-                            // ds.field je 'field1', 'field2' atd.
                             const val = parseFloat(feed[ds.field]);
                             if(!isNaN(val)) {
                                 myChart.data.datasets[index].data.push({x: time, y: val});
@@ -223,8 +307,7 @@
                         });
                     });
                     
-                    // Aktualizace titulku a grafu
-                    myChart.options.plugins.title.text = `Historie teplot (posledních ${data.feeds.length} záznamů)`;
+                    myChart.options.plugins.title.text = `Historie za posledních ${hoursBack} hodin`;
                     myChart.update();
                 }
             } catch (e) { 
@@ -234,18 +317,45 @@
             }
         }
 
-        // Funkce pro změnu rozsahu (tlačítka)
-        function changeRange(count, btn) {
-            // Aktualizace vzhledu tlačítek
+        // Funkce pro změnu rozsahu z tlačítek
+        function changeRange(hours, btn) {
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-
-            // Načtení dat
-            loadHistory(count);
+            
+            // Vymazat hodnotu z custom inputu, pokud uživatel klikne na předvolbu
+            const customInput = document.getElementById('custom-hours');
+            if(customInput) customInput.value = '';
+            
+            loadHistory(hours);
         }
 
-        // Spustit načítání (default 24h)
-        loadHistory(1440);
+        // Funkce pro vlastní rozsah hodin z inputu
+        function applyCustomRange(btn) {
+            const input = document.getElementById('custom-hours');
+            let hours = parseInt(input.value);
+            
+            // Kontrola platnosti
+            if (isNaN(hours) || hours <= 0) {
+                input.style.borderColor = '#e74c3c'; // Červená barva při chybě
+                setTimeout(() => input.style.borderColor = '#bdc3c7', 2000);
+                return;
+            }
+            
+            // Ochrana proti přetížení API (max 30 dní)
+            if (hours > 720) {
+                hours = 720;
+                input.value = 720;
+            }
+
+            // Aktualizace vizuálu tlačítek
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            loadHistory(hours);
+        }
+
+        // Spustit načítání výchozího stavu (24h)
+        loadHistory(24);
 
         // --- 5. MQTT LOGIKA (ŽIVÁ DATA) ---
         const heatingMap = {
