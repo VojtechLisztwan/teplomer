@@ -193,9 +193,40 @@ h1 { text-align: center; color: var(--dark); margin-bottom: 30px; }
     line-height: 1.5;
 }
 
-/* Mobile Responsive */
+/* Mobile Responsive (Aktualizováno) */
 @media (max-width: 600px) {
     .navbar { flex-direction: column; gap: 10px; }
     .nav-links { width: 100%; justify-content: center; }
     .welcome-section h1 { font-size: 1.8rem; }
+    
+    /* Karty na mobilu přes celou šířku s menším okrajem */
+    .dashboard-grid { 
+        grid-template-columns: 1fr; 
+        gap: 15px;
+    }
+    
+    /* Větší dotyková plocha pro přepínače křivek na mobilu */
+    #dataset-toggles {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .toggle-btn {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+
+    /* Tlačítka pro časové rozmezí na mobilu */
+    .chart-controls {
+        gap: 8px;
+    }
+    .range-btn {
+        flex: 1 1 calc(33% - 10px);
+        text-align: center;
+        padding: 8px 5px;
+    }
+    .range-input {
+        flex: 1 1 100%;
+        margin-top: 5px;
+    }
 }
