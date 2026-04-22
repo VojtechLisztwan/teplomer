@@ -4,23 +4,183 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel - Kotelna</title>
-    <!-- Odkaz na sdílený CSS soubor -->
-    <link rel="stylesheet" href="style.css">
     
+    <!-- Externí knihovny pro MQTT a Grafy -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-    <!-- Knihovny pro graf -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+    
+    <!-- Knihovny pro dotyková gesta a Zoom/Pan v grafu -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
     <style>
-        /* Specifické styly pro ovládání grafu */
+        /* =======================================================
+           1. ČÁST: HLAVNÍ STYLY (původně style.css)
+           ======================================================= */
+        :root {
+            --primary: #3498db;  /* Modrá */
+            --dark: #2c3e50;     /* Tmavě šedá */
+            --light: #ecf0f1;    /* Světlá */
+            --danger: #e74c3c;   /* Červená */
+            --success: #27ae60;  /* Zelená */
+            --warning: #f39c12;  /* Oranžová */
+            --grey: #7f8c8d;     /* Šedá */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            background-color: var(--dark);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .navbar-brand {
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary);
+        }
+
+        .nav-btn.active {
+            background: var(--primary);
+            font-weight: bold;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+
+        /* --- GENERAL LAYOUT --- */
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h1 { text-align: center; color: var(--dark); margin-bottom: 30px; }
+
+        /* --- GRID SYSTEM --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            text-align: center;
+            border-top: 5px solid var(--primary);
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .card h2 { margin-top: 0; font-size: 1.2rem; color: var(--grey); border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;}
+
+        .card-icon {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .card-boiler { border-top-color: var(--danger); }
+        .card-solar { border-top-color: var(--warning); }
+        .card-old { border-top-color: var(--grey); }
+
+        /* --- DATA DISPLAY --- */
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #eee;
+            width: 100%;
+        }
+        .data-row:last-child { border-bottom: none; }
+
+        .data-label { font-size: 0.9rem; color: var(--grey); }
+        .data-value { font-size: 1.2rem; font-weight: bold; color: var(--dark); }
+        .data-unit { font-size: 0.8rem; color: #95a5a6; }
+
+        /* --- GRAF --- */
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            height: auto;
+            position: relative;
+            padding-bottom: 30px;
+        }
+
+        /* --- STATUS --- */
+        #status {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #bdc3c7;
+        }
+        .online { color: var(--success) !important; font-weight: bold; }
+
+        /* =======================================================
+           2. ČÁST: SPECIFICKÉ STYLY PRO KOTELNU A GRAF
+           ======================================================= */
         .chart-controls {
             display: flex;
             justify-content: center;
             gap: 10px;
             margin-bottom: 15px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .range-btn {
@@ -46,7 +206,24 @@
             box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
         }
 
-        /* Styly pro přepínače křivek (filtr dat) */
+        /* Tlačítko pro reset zoomu */
+        .reset-btn {
+            background-color: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+            margin-left: 5px;
+        }
+        .reset-btn:hover { background-color: #c0392b; }
+
+        /* Tlačítko pro tooltip */
+        .tooltip-btn {
+            background-color: #f39c12;
+            color: white;
+            border-color: #f39c12;
+            margin-left: 5px;
+        }
+        .tooltip-btn:hover { background-color: #d68910; }
+
         .toggle-btn {
             padding: 4px 12px;
             border-radius: 15px;
@@ -57,11 +234,11 @@
             transition: all 0.2s;
             background-color: transparent;
         }
+        
         .toggle-btn:hover {
             transform: scale(1.05);
         }
 
-        /* Styly pro vlastní vstup hodin */
         .range-input {
             border: 1px solid #bdc3c7;
             padding: 5px 10px;
@@ -72,9 +249,60 @@
             color: #2c3e50;
             text-align: center;
         }
+        
         .range-input:focus {
             border-color: #3498db;
             box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+
+        /* =======================================================
+           3. ČÁST: RESPONZIVNÍ DESIGN PRO MOBILY (Aktualizováno)
+           ======================================================= */
+        @media (max-width: 600px) {
+            .navbar { flex-direction: column; gap: 10px; }
+            .nav-links { width: 100%; justify-content: center; }
+            .welcome-section h1 { font-size: 1.8rem; }
+            
+            /* Karty na mobilu přes celou šířku s menším okrajem */
+            .dashboard-grid { 
+                grid-template-columns: 1fr; 
+                gap: 15px;
+            }
+            
+            /* Větší dotyková plocha pro přepínače křivek na mobilu */
+            #dataset-toggles {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .toggle-btn {
+                padding: 8px 10px;
+                font-size: 0.9rem;
+                text-align: center;
+            }
+
+            /* Tlačítka pro časové rozmezí na mobilu */
+            .chart-controls {
+                gap: 8px;
+            }
+            .range-btn {
+                flex: 1 1 calc(33% - 10px);
+                text-align: center;
+                padding: 8px 5px;
+            }
+            .range-input {
+                flex: 1 1 100%;
+                margin-top: 5px;
+            }
+            .desktop-only {
+                display: none;
+            }
+            .reset-btn, .tooltip-btn {
+                flex: 1 1 100%;
+                margin-left: 0;
+                margin-top: 5px;
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -155,24 +383,33 @@
         </div>
 
         <!-- Sekce pro Graf -->
-        <div class="chart-container" style="height: auto; padding-bottom: 30px;">
+        <div class="chart-container">
             
             <!-- Přepínače zobrazených hodnot v grafu -->
             <div id="dataset-toggles" class="chart-controls" style="margin-bottom: 20px;">
                 <!-- Tlačítka se vygenerují automaticky přes JS -->
             </div>
 
-            <!-- Ovládací tlačítka pro časové období (předáváme počet hodin) -->
-            <div class="chart-controls" style="align-items: center;">
+            <!-- Ovládací tlačítka pro časové období a Zoom -->
+            <div class="chart-controls">
                 <button onclick="changeRange(6, this)" class="range-btn">6h</button>
                 <button onclick="changeRange(12, this)" class="range-btn">12h</button>
                 <button onclick="changeRange(24, this)" class="range-btn active">24h</button>
                 <button onclick="changeRange(72, this)" class="range-btn">3 Dny</button>
-                <span style="color: #bdc3c7; margin: 0 5px;">|</span>
+                <span style="color: #bdc3c7; margin: 0 5px;" class="desktop-only">|</span>
                 <input type="number" id="custom-hours" class="range-input" placeholder="Hodin..." min="1" max="720">
                 <button onclick="applyCustomRange(this)" class="range-btn">Použít</button>
+                <!-- Tlačítko pro návrat z vyzoomovaného grafu -->
+                <button onclick="resetChartZoom()" class="range-btn reset-btn">Reset Zoomu</button>
+                <!-- NOVÉ: Tlačítko pro tooltip -->
+                <button id="toggle-tooltip-btn" onclick="toggleTooltip()" class="range-btn tooltip-btn">Vypnout Tooltip</button>
             </div>
             
+            <!-- Informace o ovládání grafu -->
+            <p style="text-align: center; font-size: 0.75rem; color: #95a5a6; margin-top: -5px; margin-bottom: 10px;">
+                💡 Tip: V grafu můžete scrollovat kolečkem myši pro přiblížení a tažením se posouvat (na mobilu gesty).
+            </p>
+
             <div style="position: relative; height: 340px;"> 
                 <canvas id="kotelnaChart"></canvas>
             </div>
@@ -219,29 +456,101 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
                 scales: {
                     x: { 
                         type: 'time', 
                         time: { unit: 'hour', tooltipFormat: 'dd.MM. yyyy HH:mm' }, 
                         title: {display: true, text: 'Čas'} 
-                        // min a max se budou nastavovat dynamicky podle vybraného času
                     },
                     y: { title: {display: true, text: 'Teplota (°C)'} }
                 },
                 plugins: {
                     title: { display: true, text: 'Historie teplot v kotelně' },
                     tooltip: { mode: 'index', intersect: false },
-                    legend: { display: false } // Vypneme výchozí legendu, máme vlastní tlačítka
+                    legend: { display: false },
+                    // Konfigurace Zoom a Pan pluginu
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'x', // Posun jen v časové ose
+                            onPanComplete: checkAndLoadMoreData
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true, // Zoom kolečkem myši
+                            },
+                            pinch: {
+                                enabled: true // Pinch-to-zoom na mobilu
+                            },
+                            mode: 'x', // Zoom jen v časové ose
+                            onZoomComplete: checkAndLoadMoreData
+                        }
+                    }
                 }
             }
         });
+
+        // Funkce pro resetování zoomu na výchozí zobrazení
+        // Funkce pro resetování zoomu na výchozí zobrazení
+        function resetChartZoom() {
+            if(myChart) {
+                myChart.resetZoom();
+            }
+        }
+
+        // Funkce pro vypnutí/zapnutí tooltipu
+        function toggleTooltip() {
+            const currentState = myChart.options.plugins.tooltip.enabled;
+            const isCurrentlyEnabled = currentState !== false; // výchozí je true
+            
+            myChart.options.plugins.tooltip.enabled = !isCurrentlyEnabled;
+            myChart.update('none'); // Update bez animace
+            
+            const btn = document.getElementById('toggle-tooltip-btn');
+            if (!isCurrentlyEnabled) {
+                btn.innerText = 'Vypnout Tooltip';
+                btn.style.backgroundColor = '#f39c12';
+                btn.style.borderColor = '#f39c12';
+            } else {
+                btn.innerText = 'Zapnout Tooltip';
+                btn.style.backgroundColor = '#bdc3c7';
+                btn.style.borderColor = '#bdc3c7';
+            }
+        }
+
+        // Proměnná pro sledování nejstaršího načteného času
+        let loadedStartTime = new Date().getTime();
+
+        // Funkce pro automatické donačítání starších dat při posunu/odzoomování
+        function checkAndLoadMoreData({chart}) {
+            const currentMin = chart.scales.x.min;
+            // Pokud jsme se posunuli více do minulosti (s rezervou 1 hodiny)
+            if (currentMin < loadedStartTime - (3600 * 1000)) {
+                const now = new Date().getTime();
+                let hoursNeeded = Math.ceil((now - currentMin) / (1000 * 60 * 60));
+                
+                hoursNeeded += 12; // Buffer, ať nenačítáme po každém malém posunu
+                if (hoursNeeded > 720) hoursNeeded = 720; // Maximum API (30 dní)
+                
+                const currentLoadedHours = Math.ceil((now - loadedStartTime) / (1000 * 60 * 60));
+                
+                if (hoursNeeded > currentLoadedHours) {
+                    console.log(`Posun grafu: donačítám ${hoursNeeded}h historie...`);
+                    loadHistory(hoursNeeded, true); // true = preserveZoom
+                }
+            }
+        }
 
         // Generování tlačítek pro filtrování dat
         const togglesContainer = document.getElementById('dataset-toggles');
         datasetsConfig.forEach((ds, index) => {
             const btn = document.createElement('button');
             btn.className = 'toggle-btn';
-            // Výchozí stav (vše zapnuto)
             btn.style.borderColor = ds.color;
             btn.style.backgroundColor = ds.color;
             btn.style.color = 'white';
@@ -249,50 +558,49 @@
             
             btn.onclick = () => {
                 const isCurrentlyVisible = myChart.isDatasetVisible(index);
-                // Přepnutí viditelnosti v grafu
                 myChart.setDatasetVisibility(index, !isCurrentlyVisible);
                 
-                // Změna stylu tlačítka
                 if (isCurrentlyVisible) {
                     btn.style.backgroundColor = 'transparent';
-                    btn.style.color = ds.color; // Vypnuto = pouze barevný rámeček a text
+                    btn.style.color = ds.color; 
                 } else {
                     btn.style.backgroundColor = ds.color;
-                    btn.style.color = 'white';  // Zapnuto = plná barva
+                    btn.style.color = 'white';  
                 }
                 myChart.update();
             };
             togglesContainer.appendChild(btn);
         });
 
-        // --- 4. NAČTENÍ DAT Z THINGSPEAK PŘES PŘESNÝ ČAS ---
-        async function loadHistory(hoursBack = 24) {
+        // --- 4. NAČTENÍ DAT Z THINGSPEAK ---
+        let initialLoadDone = false;
+
+        async function loadHistory(hoursBack = 24, preserveZoom = false) {
             if(tsConfig.channelID === 'VLOZTE_ID_KANALU') { console.log("Nenastaveno ID kanálu"); return; }
             
-            myChart.options.plugins.title.text = 'Načítám data...';
-            myChart.update('none');
+            if (!preserveZoom) {
+                myChart.options.plugins.title.text = 'Načítám data...';
+                myChart.update('none');
+            }
 
-            // Výpočet přesného času Od - Do
             const endDate = new Date();
             const startDate = new Date(endDate.getTime() - (hoursBack * 60 * 60 * 1000));
 
-            // Fixace osy X v grafu. Tím zaručíme, že i když data v noci chybí, 
-            // osa X bude ukazovat přesných X hodin zpětně a výpadek bude vidět jako díra.
-            myChart.options.scales.x.min = startDate.getTime();
-            myChart.options.scales.x.max = endDate.getTime();
+            // Fixace osy X pro korektní reset zoomu - jen pokud nechceme zachovat uživatelův zoom
+            if (!preserveZoom) {
+                myChart.options.scales.x.min = startDate.getTime();
+                myChart.options.scales.x.max = endDate.getTime();
+            }
 
-            // Formátování času pro ThingSpeak API (vyžaduje ISO 8601 nebo specifický tvar)
             const startStr = startDate.toISOString();
             const endStr = endDate.toISOString();
 
-            // Používáme parametry start a end místo results
             const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&start=${startStr}&end=${endStr}`;
             
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                // Vyčistit stará data
                 myChart.data.datasets.forEach(ds => ds.data = []);
 
                 if (data.feeds) {
@@ -308,53 +616,57 @@
                     });
                     
                     myChart.options.plugins.title.text = `Historie za posledních ${hoursBack} hodin`;
-                    myChart.update();
+                    myChart.update(preserveZoom ? 'none' : undefined);
+                    
+                    loadedStartTime = startDate.getTime(); // Aktualizujeme čas nejstarších dat v paměti
+                    
+                    // Pokud už byla data dříve načtena a přiblížena, resetujeme pohled na novou úroveň
+                    if(initialLoadDone && !preserveZoom) {
+                        resetChartZoom();
+                    }
+                    initialLoadDone = true;
                 }
             } catch (e) { 
                 console.error("Chyba stahování historie:", e); 
-                myChart.options.plugins.title.text = 'Chyba při načítání dat';
-                myChart.update();
+                if (!preserveZoom) {
+                    myChart.options.plugins.title.text = 'Chyba při načítání dat';
+                    myChart.update();
+                }
             }
         }
 
-        // Funkce pro změnu rozsahu z tlačítek
         function changeRange(hours, btn) {
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            // Vymazat hodnotu z custom inputu, pokud uživatel klikne na předvolbu
             const customInput = document.getElementById('custom-hours');
             if(customInput) customInput.value = '';
             
             loadHistory(hours);
         }
 
-        // Funkce pro vlastní rozsah hodin z inputu
         function applyCustomRange(btn) {
             const input = document.getElementById('custom-hours');
             let hours = parseInt(input.value);
             
-            // Kontrola platnosti
             if (isNaN(hours) || hours <= 0) {
-                input.style.borderColor = '#e74c3c'; // Červená barva při chybě
+                input.style.borderColor = '#e74c3c';
                 setTimeout(() => input.style.borderColor = '#bdc3c7', 2000);
                 return;
             }
             
-            // Ochrana proti přetížení API (max 30 dní)
             if (hours > 720) {
                 hours = 720;
                 input.value = 720;
             }
 
-            // Aktualizace vizuálu tlačítek
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
             loadHistory(hours);
         }
 
-        // Spustit načítání výchozího stavu (24h)
+        // Spuštění po načtení
         loadHistory(24);
 
         // --- 5. MQTT LOGIKA (ŽIVÁ DATA) ---
