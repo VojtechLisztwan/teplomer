@@ -152,6 +152,90 @@ h1 { text-align: center; color: var(--dark); margin-bottom: 30px; }
 }
 .online { color: var(--success) !important; font-weight: bold; }
 
+/* --- OVLÁDACÍ PRVKY GRAFU (KOTELNA & MÍSTNOSTI) --- */
+.chart-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.range-btn {
+    background-color: #ecf0f1;
+    border: 1px solid #bdc3c7;
+    color: #2c3e50;
+    padding: 5px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.range-btn:hover {
+    background-color: #dfe6e9;
+    transform: translateY(-1px);
+}
+
+.range-btn.active {
+    background-color: #3498db;
+    color: white;
+    border-color: #3498db;
+    box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+}
+
+.reset-btn {
+    background-color: #e74c3c;
+    color: white;
+    border-color: #e74c3c;
+    margin-left: 5px;
+}
+.reset-btn:hover { background-color: #c0392b; }
+
+.tooltip-btn {
+    background-color: #f39c12;
+    color: white;
+    border-color: #f39c12;
+    margin-left: 5px;
+}
+.tooltip-btn:hover { background-color: #d68910; }
+
+.toggle-btn {
+    padding: 4px 12px;
+    border-radius: 15px;
+    border: 2px solid;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: bold;
+    transition: all 0.2s;
+    background-color: transparent;
+}
+
+.toggle-btn:hover {
+    transform: scale(1.05);
+}
+
+.range-input {
+    border: 1px solid #bdc3c7;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    width: 70px;
+    outline: none;
+    color: #2c3e50;
+    text-align: center;
+}
+
+.range-input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+.desktop-only {
+    display: inline;
+}
+
 /* --- ROZCESTNÍK (INDEX) STYLY --- */
 .welcome-section {
     text-align: center;
@@ -228,5 +312,14 @@ h1 { text-align: center; color: var(--dark); margin-bottom: 30px; }
     .range-input {
         flex: 1 1 100%;
         margin-top: 5px;
+    }
+    .desktop-only {
+        display: none;
+    }
+    .reset-btn, .tooltip-btn {
+        flex: 1 1 100%;
+        margin-left: 0;
+        margin-top: 5px;
+        padding: 10px;
     }
 }
