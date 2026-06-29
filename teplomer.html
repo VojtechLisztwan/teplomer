@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="cs">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel - Místnosti</title>
     <!-- Odkaz na sdílený CSS soubor -->
-    <link rel="stylesheet" href="style.css">
-    
+    <link rel="stylesheet" href="style.css?v=2.0">
+
     <!-- Knihovny pro graf (MQTT odstraněno) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
@@ -15,6 +16,7 @@
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 </head>
+
 <body>
 
     <!-- NAVIGACE -->
@@ -40,7 +42,7 @@
 
         <!-- GRAF -->
         <div class="chart-container" style="padding-bottom: 30px; height: auto;">
-            
+
             <!-- Přepínače zobrazených hodnot v grafu -->
             <div id="dataset-toggles" class="chart-controls" style="margin-bottom: 20px;">
                 <!-- Tlačítka se vygenerují automaticky přes JS -->
@@ -56,9 +58,10 @@
                 <input type="number" id="custom-hours" class="range-input" placeholder="Hodin..." min="1" max="720">
                 <button onclick="applyCustomRange(this)" class="range-btn">Použít</button>
                 <button onclick="resetChartZoom()" class="range-btn reset-btn">Reset Zoomu</button>
-                <button id="toggle-tooltip-btn" onclick="toggleTooltip()" class="range-btn tooltip-btn">Vypnout Tooltip</button>
+                <button id="toggle-tooltip-btn" onclick="toggleTooltip()" class="range-btn tooltip-btn">Vypnout
+                    Tooltip</button>
             </div>
-            
+
             <p style="text-align: center; font-size: 0.75rem; color: #95a5a6; margin-top: -5px; margin-bottom: 10px;">
                 💡 Tip: V grafu můžete scrollovat kolečkem myši pro přiblížení a tažením se posouvat (na mobilu gesty).
             </p>
@@ -73,15 +76,15 @@
         // --- 1. KONFIGURACE THINGSPEAK ---
         // ZDE ZADEJTE SVÉ ÚDAJE
         const tsConfig = {
-            channelID: '3011617', 
+            channelID: '3011617',
             readKey: 'BMX38S8R8XSRK5YR'
         };
 
         // --- 2. KONFIGURACE SENZORŮ PRO MÍSTNOSTI ---
         const senzorKonfig = [
-            { 
-                id: 'obyvak', 
-                nazev: 'Vojta Pokoj', 
+            {
+                id: 'obyvak',
+                nazev: 'Vojta Pokoj',
                 fieldTemp: 'field1', // Teplota
                 fieldHum: 'field2',  // Vlhkost (dle zadání)
                 color: '#3498db'
@@ -118,10 +121,10 @@
                     label: s.nazev,
                     borderColor: s.color,
                     backgroundColor: s.color,
-                    data: [], 
+                    data: [],
                     tension: 0.4,
                     borderWidth: 2,
-                    pointRadius: 0, 
+                    pointRadius: 0,
                     pointHitRadius: 10
                 }))
             },
@@ -134,14 +137,14 @@
                     intersect: false
                 },
                 scales: {
-                    x: { 
-                        type: 'time', 
+                    x: {
+                        type: 'time',
                         time: { unit: 'hour', tooltipFormat: 'dd.MM. yyyy HH:mm' },
                         title: { display: true, text: 'Čas' }
                     },
-                    y: { suggestedMin: 18, suggestedMax: 28, title: {display: true, text: 'Teplota (°C)'} }
+                    y: { suggestedMin: 18, suggestedMax: 28, title: { display: true, text: 'Teplota (°C)' } }
                 },
-                plugins: { 
+                plugins: {
                     title: { display: true, text: 'Vývoj teplot' },
                     tooltip: { mode: 'index', intersect: false },
                     zoom: {
@@ -162,16 +165,16 @@
         });
 
         function resetChartZoom() {
-            if(myChart) myChart.resetZoom();
+            if (myChart) myChart.resetZoom();
         }
 
         function toggleTooltip() {
             const currentState = myChart.options.plugins.tooltip.enabled;
             const isCurrentlyEnabled = currentState !== false;
-            
+
             myChart.options.plugins.tooltip.enabled = !isCurrentlyEnabled;
             myChart.update('none');
-            
+
             const btn = document.getElementById('toggle-tooltip-btn');
             if (!isCurrentlyEnabled) {
                 btn.innerText = 'Vypnout Tooltip';
@@ -186,17 +189,17 @@
 
         let loadedStartTime = new Date().getTime();
 
-        function checkAndLoadMoreData({chart}) {
+        function checkAndLoadMoreData({ chart }) {
             const currentMin = chart.scales.x.min;
             if (currentMin < loadedStartTime - (3600 * 1000)) {
                 const now = new Date().getTime();
                 let hoursNeeded = Math.ceil((now - currentMin) / (1000 * 60 * 60));
-                
+
                 hoursNeeded += 12;
                 if (hoursNeeded > 720) hoursNeeded = 720;
-                
+
                 const currentLoadedHours = Math.ceil((now - loadedStartTime) / (1000 * 60 * 60));
-                
+
                 if (hoursNeeded > currentLoadedHours) {
                     console.log(`Posun grafu: donačítám ${hoursNeeded}h historie...`);
                     loadHistory(hoursNeeded, true);
@@ -213,17 +216,17 @@
             btn.style.backgroundColor = s.color;
             btn.style.color = 'white';
             btn.innerText = s.nazev;
-            
+
             btn.onclick = () => {
                 const isCurrentlyVisible = myChart.isDatasetVisible(index);
                 myChart.setDatasetVisibility(index, !isCurrentlyVisible);
-                
+
                 if (isCurrentlyVisible) {
                     btn.style.backgroundColor = 'transparent';
-                    btn.style.color = s.color; 
+                    btn.style.color = s.color;
                 } else {
                     btn.style.backgroundColor = s.color;
-                    btn.style.color = 'white';  
+                    btn.style.color = 'white';
                 }
                 myChart.update();
             };
@@ -232,7 +235,7 @@
 
         // --- 5. NAČÍTÁNÍ DAT (REST API) ---
         let initialLoadDone = false;
-        
+
         async function loadHistory(hoursBack = 24, preserveZoom = false) {
             if (tsConfig.channelID === 'VLOZTE_CHANNEL_ID') {
                 document.getElementById('status').innerText = 'Chybí nastavení Channel ID!';
@@ -272,17 +275,17 @@
                         senzorKonfig.forEach((senzor, index) => {
                             const val = parseFloat(feed[senzor.fieldTemp]);
                             if (!isNaN(val)) {
-                                myChart.data.datasets[index].data.push({x: time, y: val});
+                                myChart.data.datasets[index].data.push({ x: time, y: val });
                             }
                         });
                     });
-                    
+
                     myChart.options.plugins.title.text = `Vývoj teplot (posledních ${hoursBack} hodin)`;
                     myChart.update(preserveZoom ? 'none' : undefined);
 
                     loadedStartTime = startDate.getTime();
-                    
-                    if(initialLoadDone && !preserveZoom) {
+
+                    if (initialLoadDone && !preserveZoom) {
                         resetChartZoom();
                     }
                     initialLoadDone = true;
@@ -303,7 +306,7 @@
                     });
 
                     // Aktualizace statusu
-                    document.getElementById('status').innerHTML = 
+                    document.getElementById('status').innerHTML =
                         `Poslední aktualizace: ${lastUpdate.toLocaleTimeString()} (REST API)`;
                     document.getElementById('status').style.color = '#7f8c8d';
 
@@ -328,23 +331,23 @@
         function changeRange(hours, btn) {
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             const customInput = document.getElementById('custom-hours');
-            if(customInput) customInput.value = '';
-            
+            if (customInput) customInput.value = '';
+
             loadHistory(hours);
         }
 
         function applyCustomRange(btn) {
             const input = document.getElementById('custom-hours');
             let hours = parseInt(input.value);
-            
+
             if (isNaN(hours) || hours <= 0) {
                 input.style.borderColor = '#e74c3c';
                 setTimeout(() => input.style.borderColor = '#bdc3c7', 2000);
                 return;
             }
-            
+
             if (hours > 720) {
                 hours = 720;
                 input.value = 720;
@@ -352,7 +355,7 @@
 
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             loadHistory(hours);
         }
 
@@ -375,4 +378,5 @@
 
     </script>
 </body>
+
 </html>

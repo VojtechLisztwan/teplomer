@@ -1,21 +1,23 @@
-/* Hlavní CSS soubor pro Monitorovací Systém */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --primary: #3498db;  /* Modrá */
-    --dark: #2c3e50;     /* Tmavě šedá */
-    --light: #ecf0f1;    /* Světlá */
-    --danger: #e74c3c;   /* Červená */
-    --success: #27ae60;  /* Zelená */
-    --warning: #f39c12;  /* Oranžová */
-    --grey: #7f8c8d;     /* Šedá */
+    --primary: #3b82f6;  /* Moderní modrá */
+    --dark: #1e293b;     /* Břidlicově černá */
+    --light: #f8fafc;    /* Velmi světle šedá */
+    --danger: #ef4444;   /* Červená */
+    --success: #10b981;  /* Smaragdově zelená */
+    --warning: #f59e0b;  /* Jantarově oranžová */
+    --grey: #64748b;     /* Šedá */
+    --surface: #ffffff;
+    --border: #e2e8f0;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f0f2f5;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--light);
     margin: 0;
     padding: 0;
-    color: #333;
+    color: var(--dark);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -23,97 +25,131 @@ body {
 
 /* --- NAVBAR --- */
 .navbar {
-    background-color: var(--dark);
-    padding: 1rem;
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 1rem 2rem;
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .navbar-brand {
     color: white;
-    font-size: 1.2rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
     text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .nav-links {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     margin: 0;
     padding: 0;
 }
 
 .nav-btn {
-    background: rgba(255,255,255,0.1);
-    color: white;
+    background: transparent;
+    color: #cbd5e1;
     text-decoration: none;
     padding: 8px 16px;
-    border-radius: 5px;
-    transition: background 0.3s;
-    font-size: 0.9rem;
-    display: inline-block;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
 }
 
 .nav-btn:hover {
-    background: var(--primary);
+    background: rgba(255,255,255,0.1);
+    color: white;
 }
 
 .nav-btn.active {
     background: var(--primary);
-    font-weight: bold;
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 /* --- GENERAL LAYOUT --- */
 .container {
-    padding: 20px;
+    padding: 30px 20px;
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
 }
 
-h1 { text-align: center; color: var(--dark); margin-bottom: 30px; }
+h1 { 
+    text-align: center; 
+    color: var(--dark); 
+    margin-bottom: 40px; 
+    font-weight: 700;
+    font-size: 2.2rem;
+    letter-spacing: -0.5px;
+}
 
 /* --- GRID SYSTEM --- */
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    gap: 24px;
     margin-bottom: 40px;
 }
 
 .card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: 24px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
     text-align: center;
-    border-top: 5px solid var(--primary);
-    height: 100%; /* Aby byly karty stejně vysoké */
+    border-top: 6px solid var(--primary);
+    height: 100%;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
 }
 
-.card h2 { margin-top: 0; font-size: 1.2rem; color: var(--grey); border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
+}
+
+.card h2 { 
+    margin-top: 0; 
+    font-size: 1.3rem; 
+    font-weight: 700;
+    color: var(--dark); 
+    padding-bottom: 15px; 
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
 
 .card-icon {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
     display: block;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    border-radius: 50%;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
 }
 
-/* Specifické barvy karet */
 .card-boiler { border-top-color: var(--danger); }
 .card-solar { border-top-color: var(--warning); }
 .card-old { border-top-color: var(--grey); }
@@ -123,201 +159,242 @@ h1 { text-align: center; color: var(--dark); margin-bottom: 30px; }
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px dashed #eee;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--border);
     width: 100%;
 }
 .data-row:last-child { border-bottom: none; }
 
-.data-label { font-size: 0.9rem; color: var(--grey); }
-.data-value { font-size: 1.2rem; font-weight: bold; color: var(--dark); }
-.data-unit { font-size: 0.8rem; color: #95a5a6; }
+.data-label { font-size: 0.95rem; color: var(--grey); font-weight: 500; }
+.data-value { font-size: 1.5rem; font-weight: 700; color: var(--dark); }
+.data-unit { font-size: 0.9rem; color: #94a3b8; font-weight: 600; }
 
 /* --- GRAF --- */
 .chart-container {
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    height: 400px;
+    background: var(--surface);
+    padding: 25px;
+    border-radius: 24px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
     position: relative;
+    margin-top: 20px;
+}
+
+.chart-container canvas {
+    touch-action: pan-y;
 }
 
 /* --- STATUS --- */
 #status {
     text-align: center;
-    margin-top: 20px;
-    font-size: 0.8rem;
-    color: #bdc3c7;
+    margin-top: 10px;
+    margin-bottom: 25px;
+    font-size: 0.85rem;
+    color: var(--grey);
+    font-weight: 500;
 }
-.online { color: var(--success) !important; font-weight: bold; }
+.online { color: var(--success) !important; font-weight: 700; }
 
-/* --- OVLÁDACÍ PRVKY GRAFU (KOTELNA & MÍSTNOSTI) --- */
+/* --- OVLÁDACÍ PRVKY GRAFU --- */
 .chart-controls {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
     align-items: center;
 }
 
 .range-btn {
-    background-color: #ecf0f1;
-    border: 1px solid #bdc3c7;
-    color: #2c3e50;
-    padding: 5px 15px;
-    border-radius: 20px;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--grey);
+    padding: 8px 20px;
+    border-radius: 9999px;
     cursor: pointer;
     font-size: 0.9rem;
-    transition: all 0.2s;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .range-btn:hover {
-    background-color: #dfe6e9;
-    transform: translateY(-1px);
+    background-color: var(--light);
+    color: var(--dark);
+    border-color: #cbd5e1;
 }
 
 .range-btn.active {
-    background-color: #3498db;
+    background-color: var(--primary);
     color: white;
-    border-color: #3498db;
-    box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .reset-btn {
-    background-color: #e74c3c;
-    color: white;
-    border-color: #e74c3c;
+    background-color: #fef2f2;
+    color: var(--danger);
+    border-color: #fecaca;
     margin-left: 5px;
 }
-.reset-btn:hover { background-color: #c0392b; }
+.reset-btn:hover { 
+    background-color: #fee2e2; 
+    border-color: #fca5a5; 
+}
 
 .tooltip-btn {
-    background-color: #f39c12;
-    color: white;
-    border-color: #f39c12;
+    background-color: #fffbeb;
+    color: var(--warning);
+    border-color: #fde68a;
     margin-left: 5px;
 }
-.tooltip-btn:hover { background-color: #d68910; }
+.tooltip-btn:hover { 
+    background-color: #fef3c7; 
+    border-color: #fcd34d;
+}
 
 .toggle-btn {
-    padding: 4px 12px;
-    border-radius: 15px;
+    padding: 6px 18px;
+    border-radius: 9999px;
     border: 2px solid;
     cursor: pointer;
     font-size: 0.85rem;
-    font-weight: bold;
+    font-weight: 600;
     transition: all 0.2s;
     background-color: transparent;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 .toggle-btn:hover {
-    transform: scale(1.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
 .range-input {
-    border: 1px solid #bdc3c7;
-    padding: 5px 10px;
-    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 8px 15px;
+    border-radius: 9999px;
     font-size: 0.9rem;
-    width: 70px;
+    width: 80px;
     outline: none;
-    color: #2c3e50;
+    color: var(--dark);
     text-align: center;
+    background: var(--light);
+    transition: all 0.2s;
 }
 
 .range-input:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+    border-color: var(--primary);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .desktop-only {
     display: inline;
+    color: #cbd5e1;
+    font-weight: 300;
 }
 
 /* --- ROZCESTNÍK (INDEX) STYLY --- */
 .welcome-section {
     text-align: center;
-    padding: 40px 20px;
+    padding: 60px 20px;
 }
 
 .welcome-section h1 {
-    font-size: 2.5rem;
-    margin-bottom: 10px;
+    font-size: 3rem;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, var(--dark), var(--primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .welcome-subtitle {
     color: var(--grey);
-    font-size: 1.1rem;
-    margin-bottom: 50px;
+    font-size: 1.2rem;
+    margin-bottom: 60px;
 }
 
-/* Klikací karty pro rozcestník */
 .card-link {
     text-decoration: none;
     color: inherit;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: block;
 }
 
-.card-link:hover {
-    transform: translateY(-10px);
+.card-link .card {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .card-link:hover .card {
-    box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-    border-top-width: 8px; /* Tlustší linka při najetí */
+    transform: translateY(-12px);
+    box-shadow: 0 25px 30px -10px rgba(0,0,0,0.1);
+    border-top-width: 8px;
 }
 
 .card-desc {
     color: var(--grey);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     margin-top: 15px;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 
-/* Mobile Responsive (Aktualizováno) */
-@media (max-width: 600px) {
-    .navbar { flex-direction: column; gap: 10px; }
-    .nav-links { width: 100%; justify-content: center; }
-    .welcome-section h1 { font-size: 1.8rem; }
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .navbar { 
+        padding: 1rem;
+        flex-direction: column; 
+        gap: 12px; 
+    }
     
-    /* Karty na mobilu přes celou šířku s menším okrajem */
+    .nav-links { 
+        width: 100%; 
+        justify-content: center; 
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    
+    .welcome-section h1 { 
+        font-size: 2.2rem; 
+    }
+    
     .dashboard-grid { 
         grid-template-columns: 1fr; 
-        gap: 15px;
+        gap: 20px;
     }
     
-    /* Větší dotyková plocha pro přepínače křivek na mobilu */
     #dataset-toggles {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 10px;
     }
+    
     .toggle-btn {
-        padding: 8px 10px;
+        padding: 10px;
         font-size: 0.9rem;
     }
 
-    /* Tlačítka pro časové rozmezí na mobilu */
     .chart-controls {
-        gap: 8px;
+        gap: 10px;
     }
+    
     .range-btn {
         flex: 1 1 calc(33% - 10px);
         text-align: center;
-        padding: 8px 5px;
+        padding: 10px 5px;
     }
+    
     .range-input {
         flex: 1 1 100%;
         margin-top: 5px;
+        width: 100%;
+        box-sizing: border-box;
     }
+    
     .desktop-only {
         display: none;
     }
+    
     .reset-btn, .tooltip-btn {
-        flex: 1 1 100%;
+        flex: 1 1 calc(50% - 5px);
         margin-left: 0;
         margin-top: 5px;
         padding: 10px;
