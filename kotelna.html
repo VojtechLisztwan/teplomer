@@ -397,7 +397,9 @@
             hostname: 'broker.emqx.io', 
             port: 8084,
             path: '/mqtt',
-            clientId: 'WebMonitor_Heat_' + Math.random().toString(16).substr(2, 8)
+            clientId: 'WebMonitor_Heat_' + Math.random().toString(16).substr(2, 8),
+            username: 'emqx',
+            password: 'public'
         };
 
         const client = mqtt.connect(mqttOptions);
