@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="cs">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel - Kotelna</title>
-    
+
     <!-- Externí knihovny pro MQTT a Grafy -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
-    
+
     <!-- Knihovny pro dotyková gesta a Zoom/Pan v grafu -->
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
     <link rel="stylesheet" href="style.css?v=2.0">
 </head>
+
 <body>
 
     <!-- NAVIGACE -->
@@ -25,7 +27,8 @@
         <div class="nav-links">
             <a href="teplomer.html" class="nav-btn">Místnosti</a>
             <a href="kotelna.html" class="nav-btn active">Kotelna</a>
-            <a href="https://github.com/VojtechLisztwan/teplomer_backend_public" target="_blank" class="nav-btn" title="Přejít na GitHub repozitář">⚙️ Backend</a>
+            <a href="https://github.com/VojtechLisztwan/teplomer_backend_public" target="_blank" class="nav-btn"
+                title="Přejít na GitHub repozitář">⚙️ Backend</a>
         </div>
     </nav>
 
@@ -35,7 +38,7 @@
 
         <!-- GRID PRO KOTELNU (Živá data) -->
         <div class="dashboard-grid">
-                
+
             <!-- Karta: Kotel -->
             <div class="card card-boiler">
                 <span class="card-icon">🔥</span>
@@ -96,7 +99,7 @@
 
         <!-- Sekce pro Graf -->
         <div class="chart-container">
-            
+
             <!-- Přepínače zobrazených hodnot v grafu -->
             <div id="dataset-toggles" class="chart-controls" style="margin-bottom: 20px;">
                 <!-- Tlačítka se vygenerují automaticky přes JS -->
@@ -114,15 +117,16 @@
                 <!-- Tlačítko pro návrat z vyzoomovaného grafu -->
                 <button onclick="resetChartZoom()" class="range-btn reset-btn">Reset Zoomu</button>
                 <!-- NOVÉ: Tlačítko pro tooltip -->
-                <button id="toggle-tooltip-btn" onclick="toggleTooltip()" class="range-btn tooltip-btn">Vypnout Tooltip</button>
+                <button id="toggle-tooltip-btn" onclick="toggleTooltip()" class="range-btn tooltip-btn">Vypnout
+                    Tooltip</button>
             </div>
-            
+
             <!-- Informace o ovládání grafu -->
             <p style="text-align: center; font-size: 0.75rem; color: #95a5a6; margin-top: -5px; margin-bottom: 10px;">
                 💡 Tip: V grafu můžete scrollovat kolečkem myši pro přiblížení a tažením se posouvat (na mobilu gesty).
             </p>
 
-            <div style="position: relative; height: 340px;"> 
+            <div style="position: relative; height: 340px;">
                 <canvas id="kotelnaChart"></canvas>
             </div>
         </div>
@@ -132,7 +136,7 @@
     <script>
         // --- 1. KONFIGURACE THINGSPEAK ---
         const tsConfig = {
-            channelID: '3229890', 
+            channelID: '3229890',
             readKey: 'WB281UEYF211LC92'
         };
 
@@ -154,7 +158,7 @@
                 label: ds.label,
                 borderColor: ds.color,
                 backgroundColor: ds.color,
-                data: [], 
+                data: [],
                 tension: 0.3,
                 borderWidth: 2,
                 pointRadius: 0,
@@ -174,12 +178,12 @@
                     intersect: false
                 },
                 scales: {
-                    x: { 
-                        type: 'time', 
-                        time: { unit: 'hour', tooltipFormat: 'dd.MM. yyyy HH:mm' }, 
-                        title: {display: true, text: 'Čas'} 
+                    x: {
+                        type: 'time',
+                        time: { unit: 'hour', tooltipFormat: 'dd.MM. yyyy HH:mm' },
+                        title: { display: true, text: 'Čas' }
                     },
-                    y: { title: {display: true, text: 'Teplota (°C)'} }
+                    y: { title: { display: true, text: 'Teplota (°C)' } }
                 },
                 plugins: {
                     title: { display: true, text: 'Historie teplot v kotelně' },
@@ -210,7 +214,7 @@
         // Funkce pro resetování zoomu na výchozí zobrazení
         // Funkce pro resetování zoomu na výchozí zobrazení
         function resetChartZoom() {
-            if(myChart) {
+            if (myChart) {
                 myChart.resetZoom();
             }
         }
@@ -219,10 +223,10 @@
         function toggleTooltip() {
             const currentState = myChart.options.plugins.tooltip.enabled;
             const isCurrentlyEnabled = currentState !== false; // výchozí je true
-            
+
             myChart.options.plugins.tooltip.enabled = !isCurrentlyEnabled;
             myChart.update('none'); // Update bez animace
-            
+
             const btn = document.getElementById('toggle-tooltip-btn');
             if (!isCurrentlyEnabled) {
                 btn.innerText = 'Vypnout Tooltip';
@@ -239,18 +243,18 @@
         let loadedStartTime = new Date().getTime();
 
         // Funkce pro automatické donačítání starších dat při posunu/odzoomování
-        function checkAndLoadMoreData({chart}) {
+        function checkAndLoadMoreData({ chart }) {
             const currentMin = chart.scales.x.min;
             // Pokud jsme se posunuli více do minulosti (s rezervou 1 hodiny)
             if (currentMin < loadedStartTime - (3600 * 1000)) {
                 const now = new Date().getTime();
                 let hoursNeeded = Math.ceil((now - currentMin) / (1000 * 60 * 60));
-                
+
                 hoursNeeded += 12; // Buffer, ať nenačítáme po každém malém posunu
                 if (hoursNeeded > 720) hoursNeeded = 720; // Maximum API (30 dní)
-                
+
                 const currentLoadedHours = Math.ceil((now - loadedStartTime) / (1000 * 60 * 60));
-                
+
                 if (hoursNeeded > currentLoadedHours) {
                     console.log(`Posun grafu: donačítám ${hoursNeeded}h historie...`);
                     loadHistory(hoursNeeded, true); // true = preserveZoom
@@ -267,17 +271,17 @@
             btn.style.backgroundColor = ds.color;
             btn.style.color = 'white';
             btn.innerText = ds.label;
-            
+
             btn.onclick = () => {
                 const isCurrentlyVisible = myChart.isDatasetVisible(index);
                 myChart.setDatasetVisibility(index, !isCurrentlyVisible);
-                
+
                 if (isCurrentlyVisible) {
                     btn.style.backgroundColor = 'transparent';
-                    btn.style.color = ds.color; 
+                    btn.style.color = ds.color;
                 } else {
                     btn.style.backgroundColor = ds.color;
-                    btn.style.color = 'white';  
+                    btn.style.color = 'white';
                 }
                 myChart.update();
             };
@@ -288,8 +292,8 @@
         let initialLoadDone = false;
 
         async function loadHistory(hoursBack = 24, preserveZoom = false) {
-            if(tsConfig.channelID === 'VLOZTE_ID_KANALU') { console.log("Nenastaveno ID kanálu"); return; }
-            
+            if (tsConfig.channelID === 'VLOZTE_ID_KANALU') { console.log("Nenastaveno ID kanálu"); return; }
+
             if (!preserveZoom) {
                 myChart.options.plugins.title.text = 'Načítám data...';
                 myChart.update('none');
@@ -308,38 +312,38 @@
             const endStr = endDate.toISOString();
 
             const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&start=${startStr}&end=${endStr}`;
-            
+
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                
+
                 myChart.data.datasets.forEach(ds => ds.data = []);
 
                 if (data.feeds) {
                     data.feeds.forEach(feed => {
                         const time = new Date(feed.created_at);
-                        
+
                         datasetsConfig.forEach((ds, index) => {
                             const val = parseFloat(feed[ds.field]);
-                            if(!isNaN(val)) {
-                                myChart.data.datasets[index].data.push({x: time, y: val});
+                            if (!isNaN(val)) {
+                                myChart.data.datasets[index].data.push({ x: time, y: val });
                             }
                         });
                     });
-                    
+
                     myChart.options.plugins.title.text = `Historie za posledních ${hoursBack} hodin`;
                     myChart.update(preserveZoom ? 'none' : undefined);
-                    
+
                     loadedStartTime = startDate.getTime(); // Aktualizujeme čas nejstarších dat v paměti
-                    
+
                     // Pokud už byla data dříve načtena a přiblížena, resetujeme pohled na novou úroveň
-                    if(initialLoadDone && !preserveZoom) {
+                    if (initialLoadDone && !preserveZoom) {
                         resetChartZoom();
                     }
                     initialLoadDone = true;
                 }
-            } catch (e) { 
-                console.error("Chyba stahování historie:", e); 
+            } catch (e) {
+                console.error("Chyba stahování historie:", e);
                 if (!preserveZoom) {
                     myChart.options.plugins.title.text = 'Chyba při načítání dat';
                     myChart.update();
@@ -350,23 +354,23 @@
         function changeRange(hours, btn) {
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             const customInput = document.getElementById('custom-hours');
-            if(customInput) customInput.value = '';
-            
+            if (customInput) customInput.value = '';
+
             loadHistory(hours);
         }
 
         function applyCustomRange(btn) {
             const input = document.getElementById('custom-hours');
             let hours = parseInt(input.value);
-            
+
             if (isNaN(hours) || hours <= 0) {
                 input.style.borderColor = '#e74c3c';
                 setTimeout(() => input.style.borderColor = '#bdc3c7', 2000);
                 return;
             }
-            
+
             if (hours > 720) {
                 hours = 720;
                 input.value = 720;
@@ -374,7 +378,7 @@
 
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             loadHistory(hours);
         }
 
@@ -394,12 +398,10 @@
 
         const mqttOptions = {
             protocol: 'wss',
-            hostname: 'broker.emqx.io', 
-            port: 8084,
+            hostname: 'broker.hivemq.com',
+            port: 8884,
             path: '/mqtt',
-            clientId: 'WebMonitor_Heat_' + Math.random().toString(16).substr(2, 8),
-            username: 'emqx',
-            password: 'public'
+            clientId: 'WebMonitor_Heat_' + Math.random().toString(16).substr(2, 8)
         };
 
         const client = mqtt.connect(mqttOptions);
@@ -415,7 +417,7 @@
                 const msgVal = parseFloat(message.toString());
                 const elementId = heatingMap[topic];
                 const el = document.getElementById(elementId);
-                
+
                 if (el) {
                     el.innerText = msgVal.toFixed(1);
                     el.style.color = '#3498db';
@@ -424,11 +426,12 @@
             }
         });
 
-        client.on('error', (err) => { 
-            console.error(err); 
-            statusEl.innerText = 'Chyba spojení s MQTT'; 
+        client.on('error', (err) => {
+            console.error(err);
+            statusEl.innerText = 'Chyba spojení s MQTT';
             statusEl.style.color = 'red';
         });
     </script>
 </body>
+
 </html>
