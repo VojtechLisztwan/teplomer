@@ -4,108 +4,388 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel - Kotelna</title>
+    <title>Panel - Kotelna a Solární Systém</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
 
-    <!-- Externí knihovny pro MQTT a Grafy -->
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <!-- Firebase SDK (Compat verze pro přímé použití bez nutnosti bundleru) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <!-- Externí knihovny pro Grafy -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
-
-    <!-- Knihovny pro dotyková gesta a Zoom/Pan v grafu -->
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link rel="stylesheet" href="style.css?v=3.3">
 </head>
 
 <body>
 
     <!-- NAVIGACE -->
     <nav class="navbar">
-        <a href="index.html" class="navbar-brand">Monitorovací Systém</a>
+        <a href="index.html" class="navbar-brand">
+            <span>🔥</span> Kotelna a Solární Systém
+        </a>
         <div class="nav-links">
-            <a href="teplomer.html" class="nav-btn">Místnosti</a>
-            <a href="kotelna.html" class="nav-btn active">Kotelna</a>
             <a href="https://github.com/VojtechLisztwan/teplomer_backend_public" target="_blank" class="nav-btn"
                 title="Přejít na GitHub repozitář">⚙️ Backend</a>
         </div>
     </nav>
 
     <div class="container">
-        <div id="status">Připojování k MQTT...</div>
-        <br>
 
-        <!-- GRID PRO KOTELNU (Živá data) -->
+        <!-- HLAVNÍ STAVOVÝ ŘÁDEK SPOJENÍ -->
+        <div class="status-bar">
+            <div class="status-left">
+                <span id="conn-dot" class="pulse-dot"></span>
+                <span id="conn-text">Připojování k Firebase...</span>
+            </div>
+            <div class="status-right">
+                <span id="last-update" style="color: var(--grey); font-size: 0.85rem;">Poslední synchronizace: --:--:--</span>
+                <button id="btn-manual-refresh" class="refresh-pill-btn" onclick="triggerManualRefresh()" title="Znovu načíst data a probliknout načtené hodnoty">
+                    <span id="refresh-icon">🔄</span> Obnovit
+                </button>
+                <span id="hdo-badge" class="badge badge-neutral">⚡ HDO: --</span>
+            </div>
+        </div>
+
+        <!-- RYCHLÉ STAVOVÉ KARTY TECHNOLOGIE -->
+        <div class="tech-grid">
+            <!-- Čerpadlo -->
+            <div class="tech-card">
+                <div class="tech-icon" id="tech-pump-icon" style="color: #3b82f6;">🌀</div>
+                <div class="tech-info">
+                    <div class="tech-title">Čerpadlo soláru</div>
+                    <div class="tech-value">
+                        <span id="tech-pump-val">--</span>
+                        <span id="tech-pump-badge" class="badge badge-neutral">--</span>
+                    </div>
+                    <div class="tech-sub" id="tech-pump-sub">Režim: Načítám...</div>
+                </div>
+            </div>
+
+            <!-- Spirála -->
+            <div class="tech-card">
+                <div class="tech-icon" id="tech-spir-icon" style="color: #f59e0b;">♨️</div>
+                <div class="tech-info">
+                    <div class="tech-title">Přepínač spirál</div>
+                    <div class="tech-value">
+                        <span id="tech-spir-val">--</span>
+                        <span id="tech-spir-badge" class="badge badge-neutral">--</span>
+                    </div>
+                    <div class="tech-sub" id="tech-spir-sub">Automatika (45 °C)</div>
+                </div>
+            </div>
+
+            <!-- Noční proud (HDO) -->
+            <div class="tech-card">
+                <div class="tech-icon" id="tech-hdo-icon" style="color: #10b981;">⚡</div>
+                <div class="tech-info">
+                    <div class="tech-title">Sazba proudu</div>
+                    <div class="tech-value">
+                        <span id="tech-hdo-val">--</span>
+                    </div>
+                    <div class="tech-sub" id="tech-hdo-sub">HDO tarif</div>
+                </div>
+            </div>
+
+            <!-- Řídicí automat ESP32 -->
+            <div class="tech-card">
+                <div class="tech-icon" style="color: #8b5cf6;">📡</div>
+                <div class="tech-info">
+                    <div class="tech-title">Automat ESP32</div>
+                    <div class="tech-value">
+                        <span id="tech-esp-val">Připojování</span>
+                    </div>
+                    <div class="tech-sub" id="tech-esp-sub">Uptime: --</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ŽIVÁ TEPLOTNÍ DATA ZE SNÍMAČŮ (MODBUS) -->
         <div class="dashboard-grid">
-
             <!-- Karta: Kotel -->
             <div class="card card-boiler">
-                <span class="card-icon">🔥</span>
-                <h2>Hlavní Kotel</h2>
-                <div class="data-row">
-                    <span class="data-label">Teplota Pece</span>
-                    <div>
-                        <span id="val-pec" class="data-value">--</span> <span class="data-unit">°C</span>
+                <div class="card-header-row">
+                    <div class="card-icon-wrapper boiler-icon-bg">🔥</div>
+                    <div class="card-title-group">
+                        <h2>Hlavní Kotel</h2>
+                        <span class="card-subtitle">Pec & vytápění</span>
                     </div>
+                    <span id="boiler-status-badge" class="badge badge-neutral">Klid</span>
+                </div>
+                <div class="hero-temp-container">
+                    <div class="hero-temp-value">
+                        <span id="val-pec" class="data-value">--</span>
+                        <span class="data-unit">°C</span>
+                    </div>
+                    <span class="hero-temp-label">Teplota v kotli</span>
+                </div>
+                <div class="mini-bar-track">
+                    <div id="bar-pec" class="mini-bar-fill boiler-fill" style="width: 20%;"></div>
                 </div>
             </div>
 
             <!-- Karta: Nový Bojler -->
-            <div class="card">
-                <span class="card-icon">💧</span>
-                <h2>Nový Bojler</h2>
-                <div class="data-row">
-                    <span class="data-label">Horní</span>
-                    <div><span id="val-horni_n" class="data-value">--</span> <span class="data-unit">°C</span></div>
+            <div class="card card-new-boiler">
+                <div class="card-header-row">
+                    <div class="card-icon-wrapper boiler-new-icon-bg">💧</div>
+                    <div class="card-title-group">
+                        <h2>Nový Bojler</h2>
+                        <span class="card-subtitle">Zásobník TUV (3 zóny)</span>
+                    </div>
+                    <span class="badge badge-info">300 L</span>
                 </div>
-                <div class="data-row">
-                    <span class="data-label">Střední</span>
-                    <div><span id="val-stredni_n" class="data-value">--</span> <span class="data-unit">°C</span></div>
-                </div>
-                <div class="data-row">
-                    <span class="data-label">Dolní</span>
-                    <div><span id="val-dolni_n" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                <div class="stratified-tank">
+                    <div class="tank-zone-row zone-top">
+                        <div class="zone-info">
+                            <span class="zone-dot top-dot"></span>
+                            <span class="data-label">Horní zóna</span>
+                        </div>
+                        <div class="zone-value-wrap">
+                            <span id="val-horni_n" class="data-value">--</span> <span class="data-unit">°C</span>
+                        </div>
+                    </div>
+                    <div class="tank-zone-row zone-mid">
+                        <div class="zone-info">
+                            <span class="zone-dot mid-dot"></span>
+                            <span class="data-label">Střední zóna</span>
+                        </div>
+                        <div class="zone-value-wrap">
+                            <span id="val-stredni_n" class="data-value">--</span> <span class="data-unit">°C</span>
+                        </div>
+                    </div>
+                    <div class="tank-zone-row zone-bot">
+                        <div class="zone-info">
+                            <span class="zone-dot bot-dot"></span>
+                            <span class="data-label">Dolní zóna</span>
+                        </div>
+                        <div class="zone-value-wrap">
+                            <span id="val-dolni_n" class="data-value">--</span> <span class="data-unit">°C</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Karta: Starý Bojler -->
             <div class="card card-old">
-                <span class="card-icon">🏚️</span>
-                <h2>Starý Bojler</h2>
-                <div class="data-row">
-                    <span class="data-label">Horní</span>
-                    <div><span id="val-horni_s" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                <div class="card-header-row">
+                    <div class="card-icon-wrapper boiler-old-icon-bg">🏚️</div>
+                    <div class="card-title-group">
+                        <h2>Starý Bojler</h2>
+                        <span class="card-subtitle">Sekundární zásobník</span>
+                    </div>
+                    <span class="badge badge-neutral">2 zóny</span>
                 </div>
-                <div class="data-row">
-                    <span class="data-label">Dolní</span>
-                    <div><span id="val-dolni_s" class="data-value">--</span> <span class="data-unit">°C</span></div>
+                <div class="stratified-tank">
+                    <div class="tank-zone-row zone-top">
+                        <div class="zone-info">
+                            <span class="zone-dot top-dot"></span>
+                            <span class="data-label">Horní zóna</span>
+                        </div>
+                        <div class="zone-value-wrap">
+                            <span id="val-horni_s" class="data-value">--</span> <span class="data-unit">°C</span>
+                        </div>
+                    </div>
+                    <div class="tank-zone-row zone-bot">
+                        <div class="zone-info">
+                            <span class="zone-dot bot-dot"></span>
+                            <span class="data-label">Dolní zóna</span>
+                        </div>
+                        <div class="zone-value-wrap">
+                            <span id="val-dolni_s" class="data-value">--</span> <span class="data-unit">°C</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Karta: Solární Panel -->
             <div class="card card-solar">
-                <span class="card-icon">☀️</span>
-                <h2>Solární Panel</h2>
-                <div class="data-row">
-                    <span class="data-label">Teplota kolektoru</span>
-                    <div>
-                        <span id="val-solarni" class="data-value">--</span> <span class="data-unit">°C</span>
+                <div class="card-header-row">
+                    <div class="card-icon-wrapper solar-icon-bg">☀️</div>
+                    <div class="card-title-group">
+                        <h2>Solární Panel</h2>
+                        <span class="card-subtitle">Střešní fototermika</span>
+                    </div>
+                    <span id="solar-status-badge" class="badge badge-warning">Slunce</span>
+                </div>
+                <div class="hero-temp-container">
+                    <div class="hero-temp-value">
+                        <span id="val-solarni" class="data-value">--</span>
+                        <span class="data-unit">°C</span>
+                    </div>
+                    <span class="hero-temp-label">Teplota kolektoru</span>
+                </div>
+                <div class="solar-delta-box">
+                    <span class="solar-delta-label">Rozdíl ΔT (Solár - Bojler):</span>
+                    <span class="solar-delta-value">
+                        <span id="val-delta-solar" class="data-value">--</span> <span class="data-unit">°C</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- OVLÁDACÍ PANEL KOTELNY (MÓD SPRÁVY) -->
+        <section class="control-section" id="control-section">
+            <div class="control-header">
+                <div class="control-title-group">
+                    <h2><span>⚙️</span> Ovládání a správa kotelny</h2>
+                    <p>Zabezpečené řízení oběhového čerpadla, ventilu topných spirál a teplotních diferencí</p>
+                </div>
+                <div id="auth-controls">
+                    <!-- Tlačítko pro odemčení módu správy -->
+                    <button id="btn-unlock-auth" class="auth-btn auth-btn-unlock" onclick="openAuthModal()">
+                        <span>🔑</span> Odemknout mód správy
+                    </button>
+                    <!-- Zobrazeno pouze po přihlášení -->
+                    <div id="admin-badge-container" style="display: none; align-items: center; gap: 10px;">
+                        <span class="badge badge-success" style="font-size: 0.85rem; padding: 6px 12px;">
+                            🔓 Mód správy aktivní
+                        </span>
+                        <button id="btn-lock-auth" class="auth-btn auth-btn-lock" onclick="lockAdminMode()">
+                            <span>🔒</span> Zamknout
+                        </button>
                     </div>
                 </div>
             </div>
 
-        </div>
-
-        <!-- Sekce pro Graf -->
-        <div class="chart-container">
-
-            <!-- Přepínače zobrazených hodnot v grafu -->
-            <div id="dataset-toggles" class="chart-controls" style="margin-bottom: 20px;">
-                <!-- Tlačítka se vygenerují automaticky přes JS -->
+            <!-- Upozornění v zamčeném stavu -->
+            <div id="locked-banner" class="locked-overlay-notice" style="display: flex;">
+                <span>🔒 <strong>Režim pouze pro čtení:</strong> Pro změnu nastavení nebo přepnutí zařízení se musíte autorizovat administrátorským heslem.</span>
+                <button class="range-btn" style="padding: 4px 14px; font-size: 0.8rem; background: #f59e0b; color: white; border-color: #f59e0b;" onclick="openAuthModal()">Přihlásit se</button>
             </div>
 
-            <!-- Ovládací tlačítka pro časové období a Zoom -->
+            <!-- Tělo ovládacího panelu (při zamčení se zablokuje) -->
+            <div class="control-body is-locked" id="control-body">
+                <div class="control-grid">
+
+                    <!-- Karta 1: Řízení spirál -->
+                    <div class="control-card">
+                        <div>
+                            <div class="control-card-header">
+                                <h3 class="control-card-title"><span>♨️</span> Topné spirály (Ventil)</h3>
+                                <span id="ctrl-spir-mode-badge" class="badge badge-info">Automatika</span>
+                            </div>
+                            <p class="control-card-desc">
+                                Automatické přepínání řídí servoventil dle teploty horní části nového bojleru (práh 45 °C).
+                            </p>
+
+                            <div class="switch-wrapper">
+                                <span class="switch-label">Automatické přepínání</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="switch-autoswitch" onchange="handleAutoswitchChange(this.checked)">
+                                    <span class="slider-switch"></span>
+                                </label>
+                            </div>
+
+                            <div id="manual-spir-container" style="margin-top: 15px; opacity: 0.5;">
+                                <label style="font-size: 0.85rem; font-weight: 600; color: var(--dark); display: block; margin-bottom: 6px;">
+                                    Manuální poloha ventilu:
+                                </label>
+                                <div class="segmented-control">
+                                    <button id="btn-spir-horni" class="segmented-btn active" onclick="setManualSpir('horni')">
+                                        🔼 Horní spirála
+                                    </button>
+                                    <button id="btn-spir-spodni" class="segmented-btn" onclick="setManualSpir('spodni')">
+                                        🔽 Spodní spirála
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="default-spir-container" class="default-spir-wrapper" style="opacity: 0.5;">
+                                <div class="default-spir-header">
+                                    <label style="font-size: 0.85rem; font-weight: 600; color: var(--dark); display: flex; align-items: center; gap: 6px;">
+                                        <span>🌙</span> Výchozí poloha po zapnutí systému (noc / start):
+                                    </label>
+                                    <span id="default-spir-badge" class="badge badge-neutral" style="font-size: 0.72rem;">Při vypnuté automatice</span>
+                                </div>
+                                <p style="font-size: 0.76rem; color: #64748b; margin-top: 0; margin-bottom: 10px; line-height: 1.35;">
+                                    Určuje polohu ventilu při startu ESP32 a pro noční režim (když je vypnutá automatika).
+                                </p>
+                                <div class="segmented-control" id="default-spir-segmented">
+                                    <button id="btn-def-horni" class="segmented-btn" onclick="setDefaultSpir('horni')">
+                                        🔼 Horní spirála
+                                    </button>
+                                    <button id="btn-def-spodni" class="segmented-btn active" onclick="setDefaultSpir('spodni')">
+                                        🔽 Spodní spirála (Noční režim)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Karta 2: Oběhové čerpadlo -->
+                    <div class="control-card">
+                        <div>
+                            <div class="control-card-header">
+                                <h3 class="control-card-title"><span>🌀</span> Oběhové čerpadlo</h3>
+                                <span id="ctrl-pump-badge" class="badge badge-neutral">Diferenční</span>
+                            </div>
+                            <p class="control-card-desc">
+                                Spínání čerpadla podle rozdílu teplot mezi solárním kolektorem a bojlerem.
+                            </p>
+
+                            <div class="switch-wrapper">
+                                <span class="switch-label">Vynucený trvalý chod</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="switch-pump-always" onchange="handlePumpAlwaysChange(this.checked)">
+                                    <span class="slider-switch"></span>
+                                </label>
+                            </div>
+
+                            <p style="font-size: 0.78rem; color: #64748b; margin-top: 10px; line-height: 1.4;">
+                                🛡️ <strong>Bezpečnostní ochrana:</strong> Pokud teplota soláru překročí 95 °C, automatika sepne čerpadlo vždy bez ohledu na nastavení.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Karta 3: Nastavení hystereze -->
+                    <div class="control-card">
+                        <div>
+                            <div class="control-card-header">
+                                <h3 class="control-card-title"><span>📐</span> Teplotní diference</h3>
+                                <span class="badge badge-neutral">Hystereze</span>
+                            </div>
+                            <p class="control-card-desc">
+                                Mezní rozdíly teplot (Kolektor - Bojler) pro zapnutí a vypnutí čerpadla.
+                            </p>
+
+                            <div class="range-group">
+                                <div class="range-header">
+                                    <span class="range-title">Minimální rozdíl (Vypnutí):</span>
+                                    <span class="range-val-badge" id="val-badge-min">15 °C</span>
+                                </div>
+                                <input type="range" id="range-min" class="custom-range" min="3" max="20" value="15"
+                                    oninput="updateRangeLabel('min', this.value)">
+                            </div>
+
+                            <div class="range-group">
+                                <div class="range-header">
+                                    <span class="range-title">Maximální rozdíl (Sepnutí):</span>
+                                    <span class="range-val-badge" id="val-badge-max">25 °C</span>
+                                </div>
+                                <input type="range" id="range-max" class="custom-range" min="20" max="50" value="25"
+                                    oninput="updateRangeLabel('max', this.value)">
+                            </div>
+
+                            <button class="save-limits-btn" onclick="saveHysteresisLimits()">
+                                <span>💾</span> Uložit limity do ESP32
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- SEKCE PRO GRAF HISTORIE (Z FIREBASE DATABÁZE) -->
+        <div class="chart-container">
+            <div id="dataset-toggles" class="chart-controls" style="margin-bottom: 20px;">
+                <!-- Vygenerováno v JS -->
+            </div>
+
             <div class="chart-controls">
                 <button onclick="changeRange(6, this)" class="range-btn">6h</button>
                 <button onclick="changeRange(12, this)" class="range-btn">12h</button>
@@ -114,16 +394,12 @@
                 <span style="color: #bdc3c7; margin: 0 5px;" class="desktop-only">|</span>
                 <input type="number" id="custom-hours" class="range-input" placeholder="Hodin..." min="1" max="720">
                 <button onclick="applyCustomRange(this)" class="range-btn">Použít</button>
-                <!-- Tlačítko pro návrat z vyzoomovaného grafu -->
                 <button onclick="resetChartZoom()" class="range-btn reset-btn">Reset Zoomu</button>
-                <!-- NOVÉ: Tlačítko pro tooltip -->
-                <button id="toggle-tooltip-btn" onclick="toggleTooltip()" class="range-btn tooltip-btn">Vypnout
-                    Tooltip</button>
+                <button id="toggle-tooltip-btn" onclick="toggleTooltip()" class="range-btn tooltip-btn">Vypnout Tooltip</button>
             </div>
 
-            <!-- Informace o ovládání grafu -->
             <p style="text-align: center; font-size: 0.75rem; color: #95a5a6; margin-top: -5px; margin-bottom: 10px;">
-                💡 Tip: V grafu můžete scrollovat kolečkem myši pro přiblížení a tažením se posouvat (na mobilu gesty).
+                💡 Historie je ukládána do Firebase DB v intervalu 20 sekund. V grafu můžete scrollovat kolečkem pro zoom.
             </p>
 
             <div style="position: relative; height: 340px;">
@@ -133,25 +409,736 @@
 
     </div>
 
+    <!-- MODÁLNÍ OKNO PRO ZADÁNÍ HESLA MÓDU SPRÁVY -->
+    <div class="modal-backdrop" id="auth-modal">
+        <div class="modal-card" id="modal-card">
+            <div class="modal-icon">🔐</div>
+            <h3>Ověření administrátora</h3>
+            <p>Pro ovládání technologií a změnu konfigurace zadejte heslo módu správy.</p>
+
+            <form onsubmit="handleAuthSubmit(event)">
+                <!-- Skryté pole pro podporu správců hesel v prohlížeči (Google Hesla, iCloud Klíčenka apod.) -->
+                <input type="text" name="username" value="admin" autocomplete="username" style="display:none" aria-hidden="true">
+
+                <div class="password-input-group">
+                    <input type="password" id="admin-password-input" name="password" class="password-input" placeholder="Zadejte heslo..." autocomplete="current-password" required>
+                    <button type="button" class="toggle-eye-btn" onclick="togglePasswordVisibility()" title="Zobrazit/skrýt heslo">👁️</button>
+                </div>
+                
+                <!-- Možnost trvalého zapamatování hesla a přihlášení -->
+                <label class="remember-group" for="remember-auth-check">
+                    <input type="checkbox" id="remember-auth-check" checked>
+                    <span>Zapamatovat heslo i přihlášení na tomto zařízení</span>
+                </label>
+
+                <div id="modal-error-msg" class="modal-error">Nesprávné heslo! Zkuste to znovu.</div>
+
+                <div class="modal-actions">
+                    <button type="button" class="modal-btn modal-btn-cancel" onclick="closeAuthModal()">Zrušit</button>
+                    <button type="submit" class="modal-btn modal-btn-submit">Odemknout</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFIKACE KONTEJNER -->
+    <div id="toast-container" class="toast-container"></div>
+
     <script>
-        // --- 1. KONFIGURACE THINGSPEAK ---
-        const tsConfig = {
-            channelID: '3229890',
-            readKey: 'WB281UEYF211LC92'
+        // ==========================================================================
+        // 1. KONFIGURACE FIREBASE REALTIME DATABASE
+        // ==========================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSy_KOTELNA_WEB_KEY",
+            authDomain: "kotelna-fa0d8.firebaseapp.com",
+            databaseURL: "https://kotelna-fa0d8-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "kotelna-fa0d8",
+            storageBucket: "kotelna-fa0d8.appspot.com",
+            messagingSenderId: "kotelna-fa0d8",
+            appId: "1:kotelna-fa0d8:web"
         };
 
-        // --- 2. DEFINICE DAT PRO GRAF ---
+        // ==========================================================================
+        // 2. INICIALIZACE FIREBASE
+        // ==========================================================================
+        let db = null;
+        let isFirebaseInitialized = false;
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+            isFirebaseInitialized = true;
+            console.log("Firebase úspěšně inicializován.");
+        } catch (err) {
+            console.error("Chyba při inicializaci Firebase:", err);
+            showToast("Chyba konfigurace Firebase! Zkontrolujte nastavení.", "error");
+        }
+
+        // ==========================================================================
+        // 3. STAV APLIKACE A AUTENTIZACE MÓDU SPRÁVY (HESLO ULOŽENO NA FIREBASE)
+        // ==========================================================================
+        let isAdminAuthenticated = false;
+
+        let currentControl = {
+            autoswitch: true,
+            pumpAlways: false,
+            spir: "horni",
+            teplotni_rozdil_min: 15,
+            teplotni_rozdil_max: 25
+        };
+
+        // Kontrola uloženého přihlášení (podpora trvalého uložení i relace)
+        function initAuthSession() {
+            const savedLocal = localStorage.getItem('kotelna_admin_auth');
+            const savedSession = sessionStorage.getItem('kotelna_admin_auth');
+            if (savedLocal === 'true' || savedSession === 'true') {
+                setAdminMode(true, false);
+            } else {
+                setAdminMode(false, false);
+            }
+        }
+
+        function setAdminMode(active, showNotification = true) {
+            isAdminAuthenticated = active;
+            const controlBody = document.getElementById('control-body');
+            const lockedBanner = document.getElementById('locked-banner');
+            const btnUnlock = document.getElementById('btn-unlock-auth');
+            const adminBadgeContainer = document.getElementById('admin-badge-container');
+
+            if (active) {
+                const rememberEl = document.getElementById('remember-auth-check');
+                if (rememberEl && rememberEl.checked) {
+                    localStorage.setItem('kotelna_admin_auth', 'true');
+                } else if (!localStorage.getItem('kotelna_admin_auth')) {
+                    sessionStorage.setItem('kotelna_admin_auth', 'true');
+                }
+                controlBody.classList.remove('is-locked');
+                lockedBanner.style.display = 'none';
+                btnUnlock.style.display = 'none';
+                adminBadgeContainer.style.display = 'flex';
+                if (showNotification) showToast("🔓 Mód správy byl úspěšně odemčen.", "success");
+            } else {
+                localStorage.removeItem('kotelna_admin_auth');
+                sessionStorage.removeItem('kotelna_admin_auth');
+                controlBody.classList.add('is-locked');
+                lockedBanner.style.display = 'flex';
+                btnUnlock.style.display = 'inline-flex';
+                adminBadgeContainer.style.display = 'none';
+                if (showNotification) showToast("🔒 Mód správy byl uzamčen.", "info");
+            }
+        }
+
+        function lockAdminMode() {
+            setAdminMode(false, true);
+        }
+
+        function openAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            const input = document.getElementById('admin-password-input');
+            const errorMsg = document.getElementById('modal-error-msg');
+            const rememberEl = document.getElementById('remember-auth-check');
+            
+            // Načtení uloženého hesla, pokud bylo dříve zapamatováno
+            const savedPw = localStorage.getItem('kotelna_saved_password');
+            if (savedPw) {
+                input.value = savedPw;
+                if (rememberEl) rememberEl.checked = true;
+            } else {
+                input.value = '';
+            }
+
+            errorMsg.style.display = 'none';
+            modal.classList.add('show');
+            setTimeout(() => {
+                input.focus();
+                if (savedPw) input.select();
+            }, 150);
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            modal.classList.remove('show');
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('admin-password-input');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        async function sha256(str) {
+            const buffer = new TextEncoder().encode(str);
+            const digest = await crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Ověření hesla přímo proti Firebase Realtime Databázi (/kotelna/auth)
+        // Heslo NENÍ uloženo v kódu stránky, takže ho nikdo v prohlížeči nevyčte!
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('admin-password-input');
+            const errorMsg = document.getElementById('modal-error-msg');
+            const card = document.getElementById('modal-card');
+            const rememberEl = document.getElementById('remember-auth-check');
+            const entered = input.value.trim();
+
+            if (!db) {
+                showToast("Databáze není dostupná!", "error");
+                return;
+            }
+
+            try {
+                // Načteme heslo z Firebase /kotelna/auth
+                const snap = await db.ref('kotelna/auth').once('value');
+                let authData = snap.val();
+
+                // Pokud uzel ještě neexistuje, automaticky vytvoříme výchozí heslo 'kotelna123'
+                if (!authData || (!authData.password && !authData.passwordHash)) {
+                    await db.ref('kotelna/auth').set({ password: "kotelna123" });
+                    authData = { password: "kotelna123" };
+                }
+
+                const expectedPassword = authData.password;
+                const expectedHash = authData.passwordHash;
+                const enteredHash = await sha256(entered);
+
+                let isMatch = false;
+                if (expectedPassword && entered === expectedPassword) isMatch = true;
+                if (expectedHash && enteredHash === expectedHash) isMatch = true;
+
+                if (isMatch) {
+                    // Ukládání hesla a přihlášení do localStorage
+                    if (rememberEl && rememberEl.checked) {
+                        localStorage.setItem('kotelna_admin_auth', 'true');
+                        localStorage.setItem('kotelna_saved_password', entered);
+                    } else {
+                        localStorage.removeItem('kotelna_saved_password');
+                        localStorage.removeItem('kotelna_admin_auth');
+                        sessionStorage.setItem('kotelna_admin_auth', 'true');
+                    }
+
+                    closeAuthModal();
+                    setAdminMode(true, true);
+                } else {
+                    errorMsg.style.display = 'block';
+                    card.classList.add('shake');
+                    setTimeout(() => card.classList.remove('shake'), 450);
+                    input.select();
+                }
+            } catch (err) {
+                console.error("Chyba při ověřování hesla:", err);
+                showToast("Chyba spojení s databází při ověřování!", "error");
+            }
+        }
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('auth-modal');
+            if (e.target === modal) closeAuthModal();
+        });
+
+        // ==========================================================================
+        // 4. SYNCHRONIZACE S FIREBASE REALTIME DATABASE
+        // ==========================================================================
+        if (isFirebaseInitialized && db) {
+            const statusRef = db.ref('kotelna/status');
+            const controlRef = db.ref('kotelna/control');
+            const connDot = document.getElementById('conn-dot');
+            const connText = document.getElementById('conn-text');
+
+            db.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    connDot.className = 'pulse-dot';
+                    connText.innerHTML = '● <strong>Firebase Online</strong>';
+                    connText.style.color = 'var(--dark)';
+                } else {
+                    connDot.className = 'pulse-dot offline';
+                    connText.innerText = 'Připojování k Firebase...';
+                    connText.style.color = 'var(--grey)';
+                }
+            });
+
+            // 4.1 Živý stav (/kotelna/status)
+            statusRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+
+                // Po odeslání teplot z ESP32 (každých 10 s) problikneme modře VŠECHNY přijaté hodnoty (ne jen při změně)
+                const forceFlash = true;
+
+                updateSensorVal('val-pec', data.pec, forceFlash);
+                updateSensorVal('val-horni_n', data.horni_n, forceFlash);
+                updateSensorVal('val-stredni_n', data.stredni_n, forceFlash);
+                updateSensorVal('val-dolni_n', data.dolni_n, forceFlash);
+                updateSensorVal('val-horni_s', data.horni_s, forceFlash);
+                updateSensorVal('val-dolni_s', data.dolni_s, forceFlash);
+                updateSensorVal('val-solarni', data.solarni, forceFlash);
+
+                // Aktualizace rozdílu teplot Delta T (Solár - Bojler)
+                if (data.solarni !== undefined && data.pomTep !== undefined) {
+                    const deltaVal = (parseFloat(data.solarni) - parseFloat(data.pomTep)).toFixed(1);
+                    const deltaEl = document.getElementById('val-delta-solar');
+                    if (deltaEl) {
+                        deltaEl.innerText = (deltaVal > 0 ? '+' : '') + deltaVal;
+                        flashBlue(deltaEl);
+                    }
+                }
+
+                // Mini bar a stav kotle
+                const pecVal = parseFloat(data.pec) || 0;
+                const pecPct = Math.min(100, Math.max(5, (pecVal / 90) * 100));
+                const barPecEl = document.getElementById('bar-pec');
+                if (barPecEl) barPecEl.style.width = pecPct + '%';
+
+                const boilerBadge = document.getElementById('boiler-status-badge');
+                if (boilerBadge) {
+                    if (pecVal >= 55) {
+                        boilerBadge.innerText = '🔥 Vytápí';
+                        boilerBadge.className = 'badge badge-danger';
+                    } else if (pecVal >= 35) {
+                        boilerBadge.innerText = 'Teplý';
+                        boilerBadge.className = 'badge badge-warning';
+                    } else {
+                        boilerBadge.innerText = 'Klid';
+                        boilerBadge.className = 'badge badge-neutral';
+                    }
+                }
+
+                // Stav solárního panelu
+                const solarVal = parseFloat(data.solarni) || 0;
+                const solarBadge = document.getElementById('solar-status-badge');
+                if (solarBadge) {
+                    if (solarVal >= 90) {
+                        solarBadge.innerText = '⚠️ Přehřátí!';
+                        solarBadge.className = 'badge badge-danger';
+                    } else if (data.cerpadlo) {
+                        solarBadge.innerText = '☀️ Nabíjí';
+                        solarBadge.className = 'badge badge-success';
+                    } else {
+                        solarBadge.innerText = 'Slunce';
+                        solarBadge.className = 'badge badge-warning';
+                    }
+                }
+
+                // Výchozí poloha ventilu po zapnutí z telemetrie ESP32
+                if (data.default_spirala) {
+                    updateDefaultSpirUI(data.default_spirala);
+                }
+
+                const now = new Date();
+                document.getElementById('last-update').innerText = `Poslední synchronizace: ${now.toLocaleTimeString('cs-CZ')}`;
+
+                // Čerpadlo
+                const pumpValEl = document.getElementById('tech-pump-val');
+                const pumpBadgeEl = document.getElementById('tech-pump-badge');
+                const pumpSubEl = document.getElementById('tech-pump-sub');
+                const pumpIconEl = document.getElementById('tech-pump-icon');
+
+                if (data.cerpadlo) {
+                    if (pumpValEl.innerText !== 'SEPNUTO' || forceFlash) flashBlue(pumpValEl);
+                    pumpValEl.innerText = 'SEPNUTO';
+                    if (data.fail_safe) {
+                        pumpBadgeEl.innerText = '⚠️ Fail-Safe';
+                        pumpBadgeEl.className = 'badge badge-danger';
+                        pumpSubEl.innerText = `🛡️ ${data.fail_safe_reason || 'Nouzový bezpečný chod'}`;
+                    } else {
+                        pumpBadgeEl.innerText = 'V provozu';
+                        pumpBadgeEl.className = 'badge badge-success';
+                        if (data.solarni > 90) {
+                            pumpSubEl.innerText = '⚠️ Ochrana proti přehřátí';
+                        } else if (data.pumpAlways) {
+                            pumpSubEl.innerText = '⚡ Vynucený trvalý chod';
+                        } else {
+                            pumpSubEl.innerText = '🔄 Diferenční automatika';
+                        }
+                    }
+                    pumpIconEl.style.animation = 'spin 2s linear infinite';
+                } else {
+                    if (pumpValEl.innerText !== 'VYPNUTO' || forceFlash) flashBlue(pumpValEl);
+                    pumpValEl.innerText = 'VYPNUTO';
+                    pumpBadgeEl.innerText = 'Klidový stav';
+                    pumpBadgeEl.className = 'badge badge-neutral';
+                    pumpIconEl.style.animation = 'none';
+                    pumpSubEl.innerText = 'Čeká na teplotní rozdíl';
+                }
+
+                // Spirály
+                const spirValEl = document.getElementById('tech-spir-val');
+                const spirBadgeEl = document.getElementById('tech-spir-badge');
+                const spirSubEl = document.getElementById('tech-spir-sub');
+
+                const newSpirText = data.spirala === 'horni' ? 'Horní spirála' : 'Spodní spirála';
+                if (spirValEl.innerText !== newSpirText || forceFlash) flashBlue(spirValEl);
+
+                if (data.spirala === 'horni') {
+                    spirValEl.innerText = 'Horní spirála';
+                    spirBadgeEl.innerText = '🔼 Horní zóna';
+                    spirBadgeEl.className = 'badge badge-info';
+                } else {
+                    spirValEl.innerText = 'Spodní spirála';
+                    spirBadgeEl.innerText = '🔽 Dolní zóna';
+                    spirBadgeEl.className = 'badge badge-warning';
+                }
+                spirSubEl.innerText = data.autoswitch ? 'Automatické řízení (45 °C)' : 'Manuální volba';
+
+                // Noční proud
+                const hdoValEl = document.getElementById('tech-hdo-val');
+                const hdoSubEl = document.getElementById('tech-hdo-sub');
+                const hdoBadgeEl = document.getElementById('hdo-badge');
+
+                const newHdoText = data.nocni ? 'Nízký tarif (Aktivní)' : 'Vysoký tarif';
+                if (hdoValEl.innerText !== newHdoText || forceFlash) flashBlue(hdoValEl);
+
+                if (data.nocni) {
+                    hdoValEl.innerText = 'Nízký tarif (Aktivní)';
+                    hdoValEl.style.color = 'var(--success)';
+                    hdoSubEl.innerText = 'Noční proud zapnutý';
+                    hdoBadgeEl.innerText = '⚡ HDO: Nízký tarif';
+                    hdoBadgeEl.className = 'badge badge-success';
+                } else {
+                    hdoValEl.innerText = 'Vysoký tarif';
+                    hdoValEl.style.color = 'var(--dark)';
+                    hdoSubEl.innerText = 'Standardní denní sazba';
+                    hdoBadgeEl.innerText = '⚡ HDO: Vysoký tarif';
+                    hdoBadgeEl.className = 'badge badge-neutral';
+                }
+
+                // ESP32 Status
+                const espValEl = document.getElementById('tech-esp-val');
+                const espSubEl = document.getElementById('tech-esp-sub');
+                if (data.uptime !== undefined) {
+                    const hrs = Math.floor(data.uptime / 3600);
+                    const mins = Math.floor((data.uptime % 3600) / 60);
+                    if (espValEl.innerText !== 'Online ●' || forceFlash) flashBlue(espValEl);
+                    espValEl.innerText = 'Online ●';
+                    espValEl.style.color = 'var(--success)';
+
+                    let subText = `Běží: ${hrs}h ${mins}m`;
+                    if (data.modbus_ok !== undefined) {
+                        subText += data.modbus_ok ? ' | Modbus: OK' : ' | ⚠️ Modbus chyba';
+                    }
+                    if (data.wifi_rssi !== undefined && data.wifi_rssi !== 0) {
+                        subText += ` (${data.wifi_rssi} dBm)`;
+                    }
+                    espSubEl.innerText = subText;
+                }
+
+                if (forceFlash) {
+                    flashBlue('last-update');
+                }
+            });
+
+            // 4.2 Nastavení ovládání (/kotelna/control)
+            controlRef.on('value', (snapshot) => {
+                const ctrl = snapshot.val();
+                if (!ctrl) return;
+
+                currentControl = Object.assign({}, currentControl, ctrl);
+
+                const swAutoswitch = document.getElementById('switch-autoswitch');
+                const swPumpAlways = document.getElementById('switch-pump-always');
+                const rangeMin = document.getElementById('range-min');
+                const rangeMax = document.getElementById('range-max');
+                const badgeAutoswitch = document.getElementById('ctrl-spir-mode-badge');
+                const badgePump = document.getElementById('ctrl-pump-badge');
+                const manualSpirBox = document.getElementById('manual-spir-container');
+                const defSpirContainer = document.getElementById('default-spir-container');
+                const defSpirBadge = document.getElementById('default-spir-badge');
+
+                if (swAutoswitch) swAutoswitch.checked = !!ctrl.autoswitch;
+                if (swPumpAlways) swPumpAlways.checked = !!ctrl.pumpAlways;
+
+                if (rangeMin && ctrl.teplotni_rozdil_min !== undefined) {
+                    rangeMin.value = ctrl.teplotni_rozdil_min;
+                    updateRangeLabel('min', ctrl.teplotni_rozdil_min);
+                }
+                if (rangeMax && ctrl.teplotni_rozdil_max !== undefined) {
+                    rangeMax.value = ctrl.teplotni_rozdil_max;
+                    updateRangeLabel('max', ctrl.teplotni_rozdil_max);
+                }
+
+                if (ctrl.autoswitch) {
+                    badgeAutoswitch.innerText = 'Automatika';
+                    badgeAutoswitch.className = 'badge badge-info';
+                    manualSpirBox.style.opacity = '0.4';
+                    manualSpirBox.style.pointerEvents = 'none';
+                    if (defSpirContainer) {
+                        defSpirContainer.style.opacity = '0.4';
+                        defSpirContainer.style.pointerEvents = 'none';
+                        defSpirContainer.classList.remove('active-mode');
+                    }
+                    if (defSpirBadge) {
+                        defSpirBadge.innerText = 'Při vypnuté automatice';
+                        defSpirBadge.className = 'badge badge-neutral';
+                    }
+                } else {
+                    badgeAutoswitch.innerText = 'Manuální';
+                    badgeAutoswitch.className = 'badge badge-warning';
+                    manualSpirBox.style.opacity = '1';
+                    manualSpirBox.style.pointerEvents = 'auto';
+                    if (defSpirContainer) {
+                        defSpirContainer.style.opacity = '1';
+                        defSpirContainer.style.pointerEvents = 'auto';
+                        defSpirContainer.classList.add('active-mode');
+                    }
+                    if (defSpirBadge) {
+                        defSpirBadge.innerText = 'Aktivní volba';
+                        defSpirBadge.className = 'badge badge-info';
+                    }
+                }
+
+                updateManualSpirButtons(ctrl.spir);
+
+                if (ctrl.default_spirala) {
+                    updateDefaultSpirUI(ctrl.default_spirala);
+                }
+
+                if (ctrl.pumpAlways) {
+                    badgePump.innerText = 'Vynucený chod';
+                    badgePump.className = 'badge badge-danger';
+                } else {
+                    badgePump.innerText = 'Diferenční';
+                    badgePump.className = 'badge badge-neutral';
+                }
+            });
+        }
+
+        function flashBlue(elementOrId) {
+            const el = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
+            if (!el) return;
+            el.classList.remove('flash-blue');
+            void el.offsetWidth; // Spustí reflow pro okamžitý restart animace
+            el.classList.add('flash-blue');
+        }
+
+        function updateSensorVal(elementId, val, forceFlash = false) {
+            const el = document.getElementById(elementId);
+            if (!el || val === undefined || val === null) return;
+            const formatted = parseFloat(val).toFixed(1);
+            const isFirstLoad = !el.dataset.initialized;
+
+            if (el.innerText !== formatted || isFirstLoad || forceFlash) {
+                el.innerText = formatted;
+                el.dataset.initialized = "true";
+                flashBlue(el);
+            }
+        }
+
+        let isManualRefreshing = false;
+        async function triggerManualRefresh() {
+            if (isManualRefreshing || !db) return;
+            isManualRefreshing = true;
+
+            const icon = document.getElementById('refresh-icon');
+            if (icon) icon.style.display = 'inline-block';
+            if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+
+            try {
+                const snapshot = await db.ref('kotelna/status').once('value');
+                const data = snapshot.val();
+                if (data) {
+                    updateSensorVal('val-pec', data.pec, true);
+                    updateSensorVal('val-horni_n', data.horni_n, true);
+                    updateSensorVal('val-stredni_n', data.stredni_n, true);
+                    updateSensorVal('val-dolni_n', data.dolni_n, true);
+                    updateSensorVal('val-horni_s', data.horni_s, true);
+                    updateSensorVal('val-dolni_s', data.dolni_s, true);
+                    updateSensorVal('val-solarni', data.solarni, true);
+
+                    flashBlue('tech-pump-val');
+                    flashBlue('tech-spir-val');
+                    flashBlue('tech-hdo-val');
+                    flashBlue('tech-esp-val');
+                    flashBlue('last-update');
+
+                    const now = new Date();
+                    document.getElementById('last-update').innerText = `Poslední synchronizace: ${now.toLocaleTimeString('cs-CZ')}`;
+                    showToast("Hodnoty úspěšně načteny a obnoveny 🔄", "info");
+                }
+            } catch (err) {
+                console.error("Chyba při ručním obnovení:", err);
+                showToast("Chyba při načítání z Firebase!", "error");
+            } finally {
+                setTimeout(() => {
+                    if (icon) icon.style.animation = 'none';
+                    isManualRefreshing = false;
+                }, 600);
+            }
+        }
+
+        // ==========================================================================
+        // 5. INTERAKTIVNÍ OVLÁDÁNÍ
+        // ==========================================================================
+        function requireAuth() {
+            if (!isAdminAuthenticated) {
+                openAuthModal();
+                return false;
+            }
+            return true;
+        }
+
+        function handleAutoswitchChange(checked) {
+            if (!requireAuth()) {
+                document.getElementById('switch-autoswitch').checked = !checked;
+                return;
+            }
+            if (!db) return;
+
+            db.ref('kotelna/control').update({
+                autoswitch: checked
+            }).then(() => {
+                showToast(checked ? "Automatika spirál aktivována" : "Přepnuto na manuální řízení spirál", "success");
+            }).catch(err => {
+                console.error(err);
+                showToast("Chyba při odesílání do Firebase!", "error");
+            });
+        }
+
+        function setManualSpir(target) {
+            if (!requireAuth()) return;
+            if (!db) return;
+
+            updateManualSpirButtons(target);
+
+            db.ref('kotelna/control').update({
+                autoswitch: false,
+                spir: target
+            }).then(() => {
+                showToast(`Ventil nastaven: ${target === 'horni' ? 'Horní spirála' : 'Spodní spirála'}`, "success");
+            }).catch(err => {
+                console.error(err);
+                showToast("Chyba při odesílání do Firebase!", "error");
+            });
+        }
+
+        function updateManualSpirButtons(selected) {
+            const btnHorni = document.getElementById('btn-spir-horni');
+            const btnSpodni = document.getElementById('btn-spir-spodni');
+            if (!btnHorni || !btnSpodni) return;
+
+            if (selected === 'horni') {
+                btnHorni.classList.add('active');
+                btnSpodni.classList.remove('active');
+            } else {
+                btnSpodni.classList.add('active');
+                btnHorni.classList.remove('active');
+            }
+        }
+
+        let currentDefaultSpir = 'spodni';
+
+        function updateDefaultSpirUI(selected) {
+            currentDefaultSpir = selected === 'horni' ? 'horni' : 'spodni';
+            const btnHorni = document.getElementById('btn-def-horni');
+            const btnSpodni = document.getElementById('btn-def-spodni');
+            if (!btnHorni || !btnSpodni) return;
+
+            if (currentDefaultSpir === 'horni') {
+                btnHorni.classList.add('active');
+                btnSpodni.classList.remove('active');
+            } else {
+                btnSpodni.classList.add('active');
+                btnHorni.classList.remove('active');
+            }
+        }
+
+        function setDefaultSpir(target) {
+            if (!requireAuth()) return;
+            if (!db) return;
+
+            const val = target === 'horni' ? 'horni' : 'spodni';
+            updateDefaultSpirUI(val);
+
+            db.ref('kotelna/control').update({
+                default_spirala: val
+            }).then(() => {
+                showToast(`Výchozí poloha po zapnutí (start / noc): ${val === 'horni' ? 'Horní' : 'Spodní'} spirála`, "success");
+            }).catch(err => {
+                console.error("Chyba při ukládání výchozí polohy:", err);
+                showToast("Chyba při ukládání nastavení do Firebase!", "error");
+            });
+        }
+
+        function handlePumpAlwaysChange(checked) {
+            if (!requireAuth()) {
+                document.getElementById('switch-pump-always').checked = !checked;
+                return;
+            }
+            if (!db) return;
+
+            db.ref('kotelna/control').update({
+                pumpAlways: checked
+            }).then(() => {
+                showToast(checked ? "Čerpadlo: Vynucený trvalý chod ZAPNUT" : "Čerpadlo: Automatický diferenční režim", "info");
+            }).catch(err => {
+                console.error(err);
+                showToast("Chyba při odesílání do Firebase!", "error");
+            });
+        }
+
+        function updateRangeLabel(type, val) {
+            if (type === 'min') {
+                document.getElementById('val-badge-min').innerText = `${val} °C`;
+            } else {
+                document.getElementById('val-badge-max').innerText = `${val} °C`;
+            }
+        }
+
+        function saveHysteresisLimits() {
+            if (!requireAuth()) return;
+            if (!db) return;
+
+            const minVal = parseInt(document.getElementById('range-min').value);
+            const maxVal = parseInt(document.getElementById('range-max').value);
+
+            if (minVal >= maxVal) {
+                showToast("Minimální diference musí být menší než maximální!", "error");
+                return;
+            }
+
+            db.ref('kotelna/control').update({
+                teplotni_rozdil_min: minVal,
+                teplotni_rozdil_max: maxVal
+            }).then(() => {
+                showToast(`Teplotní limity uloženy: ${minVal} °C / ${maxVal} °C`, "success");
+            }).catch(err => {
+                console.error(err);
+                showToast("Chyba při ukládání do Firebase!", "error");
+            });
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+
+            let icon = 'ℹ️';
+            if (type === 'success') icon = '✅';
+            if (type === 'error') icon = '⚠️';
+
+            toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        // ==========================================================================
+        // 6. HISTORICKÝ GRAF PŘÍMO Z FIREBASE REALTIME DATABÁZE (INTERVAL 20s)
+        // ==========================================================================
         const datasetsConfig = [
-            { field: 'field1', label: 'Pec', color: '#e74c3c' },
-            { field: 'field2', label: 'Bojler N-Horní', color: '#3498db' },
-            { field: 'field3', label: 'Bojler N-Střed', color: '#5dade2' },
-            { field: 'field4', label: 'Bojler N-Dolní', color: '#85c1e9' },
-            { field: 'field5', label: 'Bojler S-Horní', color: '#7f8c8d' },
-            { field: 'field6', label: 'Bojler S-Dolní', color: '#bdc3c7' },
-            { field: 'field7', label: 'Solár', color: '#f39c12' }
+            { field: 'pec', label: 'Pec', color: '#e74c3c' },
+            { field: 'horni_n', label: 'Bojler N-Horní', color: '#3498db' },
+            { field: 'stredni_n', label: 'Bojler N-Střed', color: '#5dade2' },
+            { field: 'dolni_n', label: 'Bojler N-Dolní', color: '#85c1e9' },
+            { field: 'horni_s', label: 'Bojler S-Horní', color: '#7f8c8d' },
+            { field: 'dolni_s', label: 'Bojler S-Dolní', color: '#bdc3c7' },
+            { field: 'solarni', label: 'Solár', color: '#f39c12' }
         ];
 
-        // --- 3. INICIALIZACE GRAFU A PŘEPÍNAČŮ ---
         const ctx = document.getElementById('kotelnaChart').getContext('2d');
         const chartData = {
             datasets: datasetsConfig.map(ds => ({
@@ -172,38 +1159,25 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
-                },
+                interaction: { mode: 'nearest', axis: 'x', intersect: false },
                 scales: {
                     x: {
                         type: 'time',
-                        time: { unit: 'hour', tooltipFormat: 'dd.MM. yyyy HH:mm' },
+                        time: { unit: 'hour', tooltipFormat: 'dd.MM. yyyy HH:mm:ss' },
                         title: { display: true, text: 'Čas' }
                     },
                     y: { title: { display: true, text: 'Teplota (°C)' } }
                 },
                 plugins: {
-                    title: { display: true, text: 'Historie teplot v kotelně' },
+                    title: { display: true, text: 'Historie teplot v kotelně (Firebase DB)' },
                     tooltip: { mode: 'index', intersect: false },
                     legend: { display: false },
-                    // Konfigurace Zoom a Pan pluginu
                     zoom: {
-                        pan: {
-                            enabled: true,
-                            mode: 'x', // Posun jen v časové ose
-                            onPanComplete: checkAndLoadMoreData
-                        },
+                        pan: { enabled: true, mode: 'x', onPanComplete: checkAndLoadMoreData },
                         zoom: {
-                            wheel: {
-                                enabled: true, // Zoom kolečkem myši
-                            },
-                            pinch: {
-                                enabled: true // Pinch-to-zoom na mobilu
-                            },
-                            mode: 'x', // Zoom jen v časové ose
+                            wheel: { enabled: true },
+                            pinch: { enabled: true },
+                            mode: 'x',
                             onZoomComplete: checkAndLoadMoreData
                         }
                     }
@@ -211,58 +1185,35 @@
             }
         });
 
-        // Funkce pro resetování zoomu na výchozí zobrazení
-        // Funkce pro resetování zoomu na výchozí zobrazení
         function resetChartZoom() {
-            if (myChart) {
-                myChart.resetZoom();
-            }
+            if (myChart) myChart.resetZoom();
         }
 
-        // Funkce pro vypnutí/zapnutí tooltipu
         function toggleTooltip() {
             const currentState = myChart.options.plugins.tooltip.enabled;
-            const isCurrentlyEnabled = currentState !== false; // výchozí je true
-
+            const isCurrentlyEnabled = currentState !== false;
             myChart.options.plugins.tooltip.enabled = !isCurrentlyEnabled;
-            myChart.update('none'); // Update bez animace
+            myChart.update('none');
 
             const btn = document.getElementById('toggle-tooltip-btn');
-            if (!isCurrentlyEnabled) {
-                btn.innerText = 'Vypnout Tooltip';
-                btn.style.backgroundColor = '#f39c12';
-                btn.style.borderColor = '#f39c12';
-            } else {
-                btn.innerText = 'Zapnout Tooltip';
-                btn.style.backgroundColor = '#bdc3c7';
-                btn.style.borderColor = '#bdc3c7';
-            }
+            btn.innerText = !isCurrentlyEnabled ? 'Vypnout Tooltip' : 'Zapnout Tooltip';
         }
 
-        // Proměnná pro sledování nejstaršího načteného času
         let loadedStartTime = new Date().getTime();
-
-        // Funkce pro automatické donačítání starších dat při posunu/odzoomování
         function checkAndLoadMoreData({ chart }) {
             const currentMin = chart.scales.x.min;
-            // Pokud jsme se posunuli více do minulosti (s rezervou 1 hodiny)
             if (currentMin < loadedStartTime - (3600 * 1000)) {
                 const now = new Date().getTime();
-                let hoursNeeded = Math.ceil((now - currentMin) / (1000 * 60 * 60));
-
-                hoursNeeded += 12; // Buffer, ať nenačítáme po každém malém posunu
-                if (hoursNeeded > 720) hoursNeeded = 720; // Maximum API (30 dní)
-
+                let hoursNeeded = Math.ceil((now - currentMin) / (1000 * 60 * 60)) + 6;
+                if (hoursNeeded > 720) hoursNeeded = 720;
                 const currentLoadedHours = Math.ceil((now - loadedStartTime) / (1000 * 60 * 60));
-
                 if (hoursNeeded > currentLoadedHours) {
-                    console.log(`Posun grafu: donačítám ${hoursNeeded}h historie...`);
-                    loadHistory(hoursNeeded, true); // true = preserveZoom
+                    loadHistory(hoursNeeded, true);
                 }
             }
         }
 
-        // Generování tlačítek pro filtrování dat
+        // Tlačítka pro zobrazení/skrytí jednotlivých křivek
         const togglesContainer = document.getElementById('dataset-toggles');
         datasetsConfig.forEach((ds, index) => {
             const btn = document.createElement('button');
@@ -273,164 +1224,116 @@
             btn.innerText = ds.label;
 
             btn.onclick = () => {
-                const isCurrentlyVisible = myChart.isDatasetVisible(index);
-                myChart.setDatasetVisibility(index, !isCurrentlyVisible);
-
-                if (isCurrentlyVisible) {
-                    btn.style.backgroundColor = 'transparent';
-                    btn.style.color = ds.color;
-                } else {
-                    btn.style.backgroundColor = ds.color;
-                    btn.style.color = 'white';
-                }
+                const isVisible = myChart.isDatasetVisible(index);
+                myChart.setDatasetVisibility(index, !isVisible);
+                btn.style.backgroundColor = isVisible ? 'transparent' : ds.color;
+                btn.style.color = isVisible ? ds.color : 'white';
                 myChart.update();
             };
             togglesContainer.appendChild(btn);
         });
 
-        // --- 4. NAČTENÍ DAT Z THINGSPEAK ---
         let initialLoadDone = false;
 
+        // Načítání historie z Firebase Realtime Databáze (/kotelna/history)
         async function loadHistory(hoursBack = 24, preserveZoom = false) {
-            if (tsConfig.channelID === 'VLOZTE_ID_KANALU') { console.log("Nenastaveno ID kanálu"); return; }
+            if (!db) return;
 
             if (!preserveZoom) {
-                myChart.options.plugins.title.text = 'Načítám data...';
+                myChart.options.plugins.title.text = 'Načítám data z Firebase DB...';
                 myChart.update('none');
             }
 
-            const endDate = new Date();
-            const startDate = new Date(endDate.getTime() - (hoursBack * 60 * 60 * 1000));
-
-            // Fixace osy X pro korektní reset zoomu - jen pokud nechceme zachovat uživatelův zoom
-            if (!preserveZoom) {
-                myChart.options.scales.x.min = startDate.getTime();
-                myChart.options.scales.x.max = endDate.getTime();
-            }
-
-            const startStr = startDate.toISOString();
-            const endStr = endDate.toISOString();
-
-            const url = `https://api.thingspeak.com/channels/${tsConfig.channelID}/feeds.json?api_key=${tsConfig.readKey}&start=${startStr}&end=${endStr}`;
+            const nowSec = Math.floor(Date.now() / 1000);
+            const cutoffSec = nowSec - (hoursBack * 3600);
 
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                const snapshot = await db.ref('kotelna/history')
+                    .orderByKey()
+                    .startAt(cutoffSec.toString())
+                    .once('value');
 
+                const data = snapshot.val();
                 myChart.data.datasets.forEach(ds => ds.data = []);
 
-                if (data.feeds) {
-                    data.feeds.forEach(feed => {
-                        const time = new Date(feed.created_at);
-
-                        datasetsConfig.forEach((ds, index) => {
-                            const val = parseFloat(feed[ds.field]);
-                            if (!isNaN(val)) {
-                                myChart.data.datasets[index].data.push({ x: time, y: val });
-                            }
-                        });
+                if (data) {
+                    const keys = Object.keys(data).sort();
+                    keys.forEach(key => {
+                        const timeMs = parseInt(key) * 1000;
+                        const row = data[key];
+                        if (row) {
+                            datasetsConfig.forEach((ds, idx) => {
+                                const val = parseFloat(row[ds.field]);
+                                if (!isNaN(val)) {
+                                    myChart.data.datasets[idx].data.push({ x: timeMs, y: val });
+                                }
+                            });
+                        }
                     });
 
-                    myChart.options.plugins.title.text = `Historie za posledních ${hoursBack} hodin`;
+                    myChart.options.plugins.title.text = `Historie za posledních ${hoursBack} hodin (Firebase DB)`;
                     myChart.update(preserveZoom ? 'none' : undefined);
+                    loadedStartTime = cutoffSec * 1000;
 
-                    loadedStartTime = startDate.getTime(); // Aktualizujeme čas nejstarších dat v paměti
-
-                    // Pokud už byla data dříve načtena a přiblížena, resetujeme pohled na novou úroveň
                     if (initialLoadDone && !preserveZoom) {
                         resetChartZoom();
                     }
                     initialLoadDone = true;
+                } else {
+                    myChart.options.plugins.title.text = `V databázi zatím nejsou data za posledních ${hoursBack} hodin`;
+                    myChart.update();
                 }
-            } catch (e) {
-                console.error("Chyba stahování historie:", e);
+            } catch (err) {
+                console.error("Chyba při načítání historie z Firebase:", err);
                 if (!preserveZoom) {
-                    myChart.options.plugins.title.text = 'Chyba při načítání dat';
+                    myChart.options.plugins.title.text = 'Chyba při načítání historie z databáze';
                     myChart.update();
                 }
             }
         }
 
+        // Poslech nově příchozích bodů v reálném čase a plynulé přidávání do grafu
+        if (isFirebaseInitialized && db) {
+            db.ref('kotelna/history').limitToLast(1).on('child_added', (snapshot) => {
+                const key = snapshot.key;
+                const row = snapshot.val();
+                if (!key || !row || !initialLoadDone) return;
+
+                const timeMs = parseInt(key) * 1000;
+                // Zkontrolujeme, zda bod již nemáme
+                const lastPoint = myChart.data.datasets[0].data[myChart.data.datasets[0].data.length - 1];
+                if (!lastPoint || lastPoint.x < timeMs) {
+                    datasetsConfig.forEach((ds, idx) => {
+                        const val = parseFloat(row[ds.field]);
+                        if (!isNaN(val)) {
+                            myChart.data.datasets[idx].data.push({ x: timeMs, y: val });
+                        }
+                    });
+                    myChart.update('none');
+                }
+            });
+        }
+
         function changeRange(hours, btn) {
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-
             const customInput = document.getElementById('custom-hours');
             if (customInput) customInput.value = '';
-
             loadHistory(hours);
         }
 
         function applyCustomRange(btn) {
             const input = document.getElementById('custom-hours');
             let hours = parseInt(input.value);
-
-            if (isNaN(hours) || hours <= 0) {
-                input.style.borderColor = '#e74c3c';
-                setTimeout(() => input.style.borderColor = '#bdc3c7', 2000);
-                return;
-            }
-
-            if (hours > 720) {
-                hours = 720;
-                input.value = 720;
-            }
-
+            if (isNaN(hours) || hours <= 0) return;
+            if (hours > 720) hours = 720;
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-
             loadHistory(hours);
         }
 
-        // Spuštění po načtení
+        initAuthSession();
         loadHistory(24);
-
-        // --- 5. MQTT LOGIKA (ŽIVÁ DATA) ---
-        const heatingMap = {
-            'pec': 'val-pec',
-            'horni_n': 'val-horni_n',
-            'stredni_n': 'val-stredni_n',
-            'dolni_n': 'val-dolni_n',
-            'horni_s': 'val-horni_s',
-            'dolni_s': 'val-dolni_s',
-            'solarni': 'val-solarni'
-        };
-
-        const mqttOptions = {
-            protocol: 'wss',
-            hostname: 'broker.hivemq.com',
-            port: 8884,
-            path: '/mqtt',
-            clientId: 'WebMonitor_Heat_' + Math.random().toString(16).substr(2, 8)
-        };
-
-        const client = mqtt.connect(mqttOptions);
-        const statusEl = document.getElementById('status');
-
-        client.on('connect', () => {
-            statusEl.innerHTML = '<span class="online">● Online - Kotelna</span>';
-            Object.keys(heatingMap).forEach(topic => client.subscribe(topic));
-        });
-
-        client.on('message', (topic, message) => {
-            if (heatingMap[topic]) {
-                const msgVal = parseFloat(message.toString());
-                const elementId = heatingMap[topic];
-                const el = document.getElementById(elementId);
-
-                if (el) {
-                    el.innerText = msgVal.toFixed(1);
-                    el.style.color = '#3498db';
-                    setTimeout(() => el.style.color = '', 300);
-                }
-            }
-        });
-
-        client.on('error', (err) => {
-            console.error(err);
-            statusEl.innerText = 'Chyba spojení s MQTT';
-            statusEl.style.color = 'red';
-        });
     </script>
 </body>
 

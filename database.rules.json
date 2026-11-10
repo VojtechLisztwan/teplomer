@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "kotelna": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

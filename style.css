@@ -82,8 +82,8 @@ body {
 
 /* --- GENERAL LAYOUT --- */
 .container {
-    padding: 30px 20px;
-    max-width: 1200px;
+    padding: 18px 20px;
+    max-width: 1360px;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
@@ -92,82 +92,303 @@ body {
 h1 { 
     text-align: center; 
     color: var(--dark); 
-    margin-bottom: 40px; 
+    margin-bottom: 24px; 
     font-weight: 700;
-    font-size: 2.2rem;
+    font-size: 1.85rem;
     letter-spacing: -0.5px;
 }
 
-/* --- GRID SYSTEM --- */
+/* --- GRID SYSTEM & REDESIGNED TELEMETRY CARDS --- */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 24px;
-    margin-bottom: 40px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 22px;
 }
 
 .card {
-    background: var(--surface);
-    padding: 2rem;
-    border-radius: 24px;
-    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
-    text-align: center;
-    border-top: 6px solid var(--primary);
-    height: 100%;
-    box-sizing: border-box;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.02);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    position: relative;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+    justify-content: space-between;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.28s ease;
+    backdrop-filter: blur(10px);
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--primary);
+    border-radius: 16px 16px 0 0;
+    transition: height 0.25s ease;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01);
+    transform: translateY(-3px);
+    box-shadow: 0 14px 24px -6px rgba(15, 23, 42, 0.1), 0 4px 8px -2px rgba(15, 23, 42, 0.03);
 }
 
-.card h2 { 
-    margin-top: 0; 
-    font-size: 1.3rem; 
+.card:hover::before {
+    height: 5px;
+}
+
+/* Specifické gradienty a akcenty pro typy panelů */
+.card-boiler {
+    background: linear-gradient(170deg, #ffffff 0%, #fffafa 55%, #fef2f2 100%);
+    border-color: rgba(254, 202, 202, 0.6);
+}
+.card-boiler::before {
+    background: linear-gradient(90deg, #ef4444, #f97316);
+}
+
+.card-new-boiler {
+    background: linear-gradient(170deg, #ffffff 0%, #fafdff 55%, #eff6ff 100%);
+    border-color: rgba(191, 219, 254, 0.6);
+}
+.card-new-boiler::before {
+    background: linear-gradient(90deg, #3b82f6, #06b6d4);
+}
+
+.card-old {
+    background: linear-gradient(170deg, #ffffff 0%, #fcfcfc 55%, #f1f5f9 100%);
+    border-color: rgba(226, 232, 240, 0.9);
+}
+.card-old::before {
+    background: linear-gradient(90deg, #64748b, #94a3b8);
+}
+
+.card-solar {
+    background: linear-gradient(170deg, #ffffff 0%, #fffefa 55%, #fef3c7 100%);
+    border-color: rgba(253, 230, 138, 0.6);
+}
+.card-solar::before {
+    background: linear-gradient(90deg, #f59e0b, #eab308);
+}
+
+/* Záhlaví karty panelu */
+.card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+    gap: 8px;
+}
+
+.card-icon-wrapper {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+}
+
+.boiler-icon-bg {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #dc2626;
+}
+
+.boiler-new-icon-bg {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #2563eb;
+}
+
+.boiler-old-icon-bg {
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    color: #475569;
+}
+
+.solar-icon-bg {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    color: #d97706;
+}
+
+.card-title-group {
+    flex: 1;
+    text-align: left;
+}
+
+.card-title-group h2 {
+    margin: 0;
+    font-size: 0.98rem;
     font-weight: 700;
-    color: var(--dark); 
-    padding-bottom: 15px; 
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border);
+    color: var(--dark);
+    letter-spacing: -0.2px;
+    border-bottom: none;
+    padding: 0;
 }
 
-.card-icon {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
+.card-subtitle {
+    font-size: 0.7rem;
+    color: var(--grey);
+    font-weight: 500;
     display: block;
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    width: 80px;
-    height: 80px;
-    line-height: 80px;
-    border-radius: 50%;
-    margin-left: auto;
-    margin-right: auto;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    margin-top: 1px;
 }
 
-.card-boiler { border-top-color: var(--danger); }
-.card-solar { border-top-color: var(--warning); }
-.card-old { border-top-color: var(--grey); }
+/* Hlavní zvýrazněná teplota (Hero teplota) */
+.hero-temp-container {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: center;
+    margin: 6px 0 10px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
 
-/* --- DATA DISPLAY --- */
+.hero-temp-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--dark);
+    line-height: 1.05;
+    letter-spacing: -0.5px;
+}
+
+.hero-temp-value .data-unit {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-left: 2px;
+}
+
+.hero-temp-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--grey);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 3px;
+    display: block;
+}
+
+/* Mini indikátor zatížení pece */
+.mini-bar-track {
+    background: #e2e8f0;
+    height: 4px;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 6px;
+    width: 100%;
+}
+
+.mini-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.boiler-fill {
+    background: linear-gradient(90deg, #f97316, #ef4444);
+}
+
+/* Vrstvený zásobník (Stratified Tank) */
+.stratified-tank {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 4px 0;
+}
+
+.tank-zone-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(226, 232, 240, 0.65);
+    transition: all 0.2s ease;
+}
+
+.tank-zone-row:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateX(2px);
+}
+
+.zone-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.zone-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.12);
+}
+
+.top-dot { background: #ef4444; }
+.mid-dot { background: #f59e0b; }
+.bot-dot { background: #3b82f6; }
+
+.zone-value-wrap {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.zone-value-wrap .data-unit {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-left: 1px;
+}
+
+/* Solární Delta pole */
+.solar-delta-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 10px;
+    padding: 6px 10px;
+    margin-top: 6px;
+}
+
+.solar-delta-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.solar-delta-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #b45309;
+}
+
+/* Obecný data-row pro kompatibilitu */
 .data-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
+    padding: 7px 0;
     border-bottom: 1px dashed var(--border);
     width: 100%;
 }
 .data-row:last-child { border-bottom: none; }
-
-.data-label { font-size: 0.95rem; color: var(--grey); font-weight: 500; }
-.data-value { font-size: 1.5rem; font-weight: 700; color: var(--dark); }
-.data-unit { font-size: 0.9rem; color: #94a3b8; font-weight: 600; }
+.data-label { font-size: 0.82rem; color: var(--grey); font-weight: 500; }
+.data-value { font-size: 1.15rem; font-weight: 700; color: var(--dark); }
+.data-unit { font-size: 0.8rem; color: #94a3b8; font-weight: 600; }
 
 /* --- GRAF --- */
 .chart-container {
@@ -337,28 +558,28 @@ h1 {
     line-height: 1.6;
 }
 
-/* Mobile Responsive */
+/* Mobile / Tablet Responsive */
 @media (max-width: 768px) {
     .navbar { 
-        padding: 1rem;
-        flex-direction: column; 
-        gap: 12px; 
+        padding: 8px 16px;
+        flex-direction: row; 
+        justify-content: space-between;
+        gap: 8px; 
     }
     
     .nav-links { 
-        width: 100%; 
-        justify-content: center; 
-        gap: 5px;
-        flex-wrap: wrap;
+        width: auto; 
+        justify-content: flex-end; 
+        gap: 6px;
     }
     
     .welcome-section h1 { 
-        font-size: 2.2rem; 
+        font-size: 1.8rem; 
     }
     
     .dashboard-grid { 
-        grid-template-columns: 1fr; 
-        gap: 20px;
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 10px;
     }
     
     #dataset-toggles {
@@ -398,5 +619,1163 @@ h1 {
         margin-left: 0;
         margin-top: 5px;
         padding: 10px;
+    }
+}
+
+/* ==========================================================================
+   ROZŠÍŘENÉ STYLY: STAVOVÉ KARTY, OVLÁDACÍ PANEL A MODÁL AUTENTIZACE
+   ========================================================================== */
+
+/* --- STAVOVÝ ŘÁDEK --- */
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    padding: 8px 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.status-left, .status-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.pulse-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: var(--success);
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse-ring 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-dot.offline {
+    background-color: var(--danger);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: none;
+}
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+/* --- RYCHLÉ STAVOVÉ KARTY SYSTÉMU (Čerpadlo, Spirála, HDO) --- */
+.tech-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.tech-card {
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 14px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(10px);
+}
+
+.tech-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -4px rgba(15, 23, 42, 0.08);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.tech-icon {
+    font-size: 1.35rem;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #f1f5f9;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+    flex-shrink: 0;
+}
+
+.tech-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.tech-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--grey);
+    font-weight: 600;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tech-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.tech-sub {
+    font-size: 0.72rem;
+    color: var(--grey);
+    margin-top: 2px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- VÝCHOZÍ POLOHA VENTILU (START / NOC) --- */
+.default-spir-wrapper {
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: rgba(248, 250, 252, 0.85);
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    transition: opacity 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+
+.default-spir-wrapper.active-mode {
+    background: rgba(239, 246, 255, 0.65);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+/* --- BADGES --- */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.badge-success {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.badge-danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.badge-warning {
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+.badge-info {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-neutral {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+/* --- OVLÁDACÍ PANEL KOTELNY --- */
+.control-section {
+    background: var(--surface);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+    margin-bottom: 40px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+.control-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+}
+
+.control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.control-title-group h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-title-group p {
+    margin: 5px 0 0;
+    font-size: 0.85rem;
+    color: var(--grey);
+}
+
+/* Tlačítka pro autentizaci */
+.auth-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s ease;
+}
+
+.auth-btn-unlock {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.auth-btn-unlock:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+}
+
+.auth-btn-lock {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.auth-btn-lock:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+/* Zamčený stav překryvu */
+.control-body {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.control-body.is-locked {
+    filter: grayscale(0.5);
+    opacity: 0.6;
+    pointer-events: none;
+    user-select: none;
+}
+
+.locked-overlay-notice {
+    display: none;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 12px 18px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.control-body.is-locked ~ .locked-overlay-notice,
+.is-locked .locked-overlay-notice {
+    display: flex;
+}
+
+/* Mřížka ovládacích bloků */
+.control-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.control-card {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.25s ease;
+}
+
+.control-card:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
+    box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.04);
+}
+
+.control-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.control-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-card-desc {
+    font-size: 0.8rem;
+    color: var(--grey);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Custom modern Switch Toggle (iOS style) */
+.switch-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 15px 0 10px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.switch-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--dark);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider-switch {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+}
+
+.slider-switch:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .slider-switch {
+    background-color: var(--primary);
+}
+
+input:checked + .slider-switch:before {
+    transform: translateX(24px);
+}
+
+/* Segmented button group (např. Horní vs Spodní spirála) */
+.segmented-control {
+    display: flex;
+    background: #e2e8f0;
+    padding: 4px;
+    border-radius: 12px;
+    gap: 4px;
+    margin-top: 12px;
+}
+
+.segmented-btn {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.segmented-btn:hover {
+    color: var(--dark);
+}
+
+.segmented-btn.active {
+    background: white;
+    color: var(--primary);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Slidery pro teplotní rozdíly */
+.range-group {
+    margin-top: 15px;
+    background: white;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+}
+
+.range-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.range-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.range-val-badge {
+    background: #eff6ff;
+    color: var(--primary);
+    padding: 2px 10px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 1px solid #bfdbfe;
+}
+
+.custom-range {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.custom-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+    transition: transform 0.15s ease;
+}
+
+.custom-range::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.custom-range::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+    border: none;
+}
+
+.save-limits-btn {
+    width: 100%;
+    margin-top: 15px;
+    padding: 12px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.save-limits-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+}
+
+/* --- MODÁLNÍ OKNO PRO HESLO (GLASSMORPHISM) --- */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal-backdrop.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-card {
+    background: white;
+    border-radius: 24px;
+    padding: 32px;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transform: scale(0.92);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-align: center;
+}
+
+.modal-backdrop.show .modal-card {
+    transform: scale(1);
+}
+
+.modal-icon {
+    width: 64px;
+    height: 64px;
+    line-height: 64px;
+    border-radius: 20px;
+    background: #eff6ff;
+    color: var(--primary);
+    font-size: 2rem;
+    margin: 0 auto 16px;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.modal-card h3 {
+    margin: 0 0 8px;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.modal-card p {
+    font-size: 0.9rem;
+    color: var(--grey);
+    margin: 0 0 20px;
+    line-height: 1.5;
+}
+
+.password-input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.password-input {
+    width: 100%;
+    padding: 13px 45px 13px 18px;
+    border-radius: 12px;
+    border: 2px solid #cbd5e1;
+    font-size: 1rem;
+    box-sizing: border-box;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.password-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+.toggle-eye-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #94a3b8;
+    padding: 4px;
+}
+
+.modal-error {
+    color: var(--danger);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: -12px;
+    margin-bottom: 16px;
+    display: none;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.modal-btn-submit {
+    background: var(--primary);
+    color: white;
+}
+
+.modal-btn-submit:hover {
+    background: #2563eb;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.modal-btn-cancel {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.modal-btn-cancel:hover {
+    background: #e2e8f0;
+    color: var(--dark);
+}
+
+/* Shake animace pro špatné heslo */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+}
+
+.shake {
+    animation: shake 0.4s ease-in-out;
+}
+
+/* --- TOAST NOTIFIKACE --- */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.toast {
+    background: #1e293b;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+    animation: toast-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast.toast-success {
+    border-left: 4px solid var(--success);
+}
+
+.toast.toast-error {
+    border-left: 4px solid var(--danger);
+}
+
+.toast.toast-info {
+    border-left: 4px solid var(--primary);
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* --- TLAČÍTKO OBNOVENÍ DAT (REFRESH PILL) --- */
+.refresh-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    color: var(--primary);
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    user-select: none;
+}
+
+.refresh-pill-btn:hover {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    transform: translateY(-1px);
+}
+
+.refresh-pill-btn:active {
+    transform: translateY(0);
+}
+
+/* --- ANIMACE PROBLIKNUTÍ HODNOT PŘI NAČTENÍ / OBNOVENÍ (JEMNÝ BÍLÝ ZÁBLESK) --- */
+.data-value, .tech-value > span:first-child {
+    display: inline-block;
+    transition: color 0.35s ease;
+}
+
+@keyframes flash-white {
+    0% {
+        color: #ffffff !important;
+        text-shadow: none;
+        background-color: transparent;
+        box-shadow: none;
+        transform: none;
+    }
+    100% {
+        color: inherit !important;
+        text-shadow: none;
+        background-color: transparent;
+        box-shadow: none;
+        transform: none;
+    }
+}
+
+.flash-blue {
+    display: inline-block;
+    animation: flash-white 0.45s ease-out forwards;
+}
+
+/* --- ZAPAMATOVAT PŘIHLÁŠENÍ V MODÁLU --- */
+.remember-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: -6px;
+    margin-bottom: 22px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: #475569;
+    user-select: none;
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.remember-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* --- VYLEPŠENÉ MOBILNÍ ZOBRAZENÍ (KOMPAKTNÍ PŘEHLED VŠECH TEPLOT) --- */
+@media (max-width: 640px) {
+    .navbar {
+        padding: 8px 12px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .navbar-brand {
+        font-size: 0.95rem;
+        gap: 5px;
+    }
+
+    .nav-btn {
+        padding: 4px 10px;
+        font-size: 0.78rem;
+    }
+
+    .container {
+        padding: 8px 8px;
+    }
+
+    /* Stavový řádek */
+    .status-bar {
+        padding: 6px 10px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-left, .status-right {
+        gap: 6px;
+        font-size: 0.74rem;
+    }
+
+    #conn-text {
+        font-size: 0.74rem;
+    }
+
+    #last-update {
+        font-size: 0.72rem !important;
+    }
+
+    .refresh-pill-btn {
+        padding: 2px 8px;
+        font-size: 0.72rem;
+    }
+
+    #hdo-badge {
+        padding: 2px 6px;
+        font-size: 0.7rem;
+    }
+
+    /* Rychlé technologické karty - 2x2 kompaktní mřížka */
+    .tech-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .tech-card {
+        padding: 6px 8px;
+        border-radius: 10px;
+        gap: 8px;
+        align-items: center;
+        min-height: 44px;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+
+    .tech-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 1.1rem;
+        border-radius: 7px;
+        flex-shrink: 0;
+    }
+
+    .tech-title {
+        font-size: 0.64rem;
+        margin-bottom: 1px;
+        letter-spacing: 0.2px;
+    }
+
+    .tech-value {
+        font-size: 0.88rem;
+        gap: 4px;
+        font-weight: 700;
+    }
+
+    .tech-sub {
+        display: none; /* Skryto pro zachování kompaktní výšky na mobilu */
+    }
+
+    /* Zobrazení teplot - 2 sloupce na mobilu, aby šly vidět VŠECHNY teploty najednou */
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .card {
+        padding: 10px 8px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    }
+
+    .card-header-row {
+        margin-bottom: 6px;
+        padding-bottom: 5px;
+        gap: 4px;
+    }
+
+    .card-icon-wrapper {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        font-size: 0.9rem;
+        border-radius: 6px;
+    }
+
+    .card-title-group h2 {
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1.15;
+    }
+
+    .card-subtitle {
+        font-size: 0.62rem;
+        margin-top: 1px;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 75px;
+    }
+
+    .card-header-row .badge {
+        font-size: 0.62rem;
+        padding: 2px 5px;
+        border-radius: 6px;
+    }
+
+    /* Hero teplota (Kotel & Solár) */
+    .hero-temp-container {
+        padding: 6px 4px;
+        margin: 4px 0 6px;
+        border-radius: 8px;
+    }
+
+    .hero-temp-value {
+        font-size: 1.45rem;
+        line-height: 1;
+        letter-spacing: -0.5px;
+    }
+
+    .hero-temp-value .data-unit {
+        font-size: 0.78rem;
+        margin-left: 2px;
+    }
+
+    .hero-temp-label {
+        font-size: 0.62rem;
+        letter-spacing: 0.2px;
+        margin-top: 2px;
+    }
+
+    .mini-bar-track {
+        height: 3px;
+        margin-top: 4px;
+    }
+
+    /* Zónový bojler (Nový & Starý Bojler) */
+    .stratified-tank {
+        gap: 3px;
+        margin: 3px 0;
+    }
+
+    .tank-zone-row {
+        padding: 4px 5px;
+        border-radius: 6px;
+    }
+
+    .zone-info {
+        gap: 4px;
+    }
+
+    .zone-dot {
+        width: 6px;
+        height: 6px;
+    }
+
+    .zone-info .data-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .zone-value-wrap {
+        font-size: 0.92rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .zone-value-wrap .data-unit {
+        font-size: 0.68rem;
+    }
+
+    /* Solární Delta pole */
+    .solar-delta-box {
+        padding: 4px 6px;
+        border-radius: 6px;
+        margin-top: 4px;
+    }
+
+    .solar-delta-label {
+        font-size: 0.64rem;
+        font-weight: 600;
+    }
+
+    .solar-delta-value {
+        font-size: 0.88rem;
+        font-weight: 700;
+    }
+
+    .solar-delta-value .data-unit {
+        font-size: 0.65rem;
+    }
+
+    /* Ovládací panel */
+    .control-section {
+        padding: 14px 10px;
+        border-radius: 14px;
+        margin-bottom: 14px;
+    }
+
+    .control-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+
+    .control-title-group h2 {
+        font-size: 1.05rem;
+    }
+
+    .auth-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+
+    #admin-badge-container {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .control-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .control-card {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    /* Graf */
+    .chart-container {
+        padding: 12px 8px;
+        border-radius: 14px;
+        margin-top: 14px;
+    }
+
+    .chart-controls {
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+
+    .range-btn {
+        padding: 5px 10px;
+        font-size: 0.78rem;
+    }
+
+    .modal-card {
+        padding: 20px 16px;
+        width: 95%;
+        max-width: 360px;
+    }
+
+    .toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+    }
+
+    .toast {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 14px;
+        font-size: 0.84rem;
+    }
+}
+
+/* Extrémně úzké displeje (< 340px) */
+@media (max-width: 340px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .tech-grid {
+        grid-template-columns: 1fr;
     }
 }
